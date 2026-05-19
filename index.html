@@ -1,0 +1,1028 @@
+!DOCTYPE html
+html lang=ko
+head
+meta charset=UTF-8
+meta name=viewport content=width=device-width, initial-scale=1.0
+titleTriple School Trackertitle
+link href=httpsfonts.googleapis.comcss2family=Instrument+Serifital@0;1&family=DM+Monowght@400;500&family=Pretendardwght@400;500;600&display=swap rel=stylesheet
+
+!-- Firebase --
+script type=module
+import { initializeApp } from 'httpswww.gstatic.comfirebasejs10.8.0firebase-app.js';
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, onSnapshot, serverTimestamp } from 'httpswww.gstatic.comfirebasejs10.8.0firebase-firestore.js';
+
+ ============================================================
+ FIREBASE CONFIG — paste your config here
+ ============================================================
+const firebaseConfig = {
+apiKey: "AIzaSyDcHNc3wuECr_obd7BneB_8ZvqP5EdkQyY",
+  authDomain: "triple-school-tracker.firebaseapp.com",
+  projectId: "triple-school-tracker",
+  storageBucket: "triple-school-tracker.firebasestorage.app",
+  messagingSenderId: "156047796789",
+  appId: "1:156047796789:web:b945a1b1e7426f86a71f7c",
+  measurementId: "G-GPH6FW4PTB"
+};
+ ============================================================
+
+let db = null;
+let firebaseReady = false;
+
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  if (!firebaseConfig.apiKey.includes('YOUR_')) {
+    firebaseReady = true;
+  }
+} catch(e) {
+  console.warn('Firebase not configured, running in offline mode');
+}
+
+window.__db = db;
+window.__firebaseReady = firebaseReady;
+window.__fsModules = { collection, doc, setDoc, getDocs, deleteDoc, query, where, onSnapshot };
+window.__firebaseLoaded = true;
+document.dispatchEvent(new Event('firebase-ready'));
+script
+
+style
+ ============================================================
+   DESIGN Editorial  Printed Matter — warm off-white, ink black,
+   accent in muted olive. Instrument Serif headlines + DM Mono data.
+   ============================================================ 
+root {
+  --ink #1a1a18;
+  --paper #f5f2eb;
+  --cream #ede9df;
+  --olive #6b7c4e;
+  --olive-light #a8b88a;
+  --rust #b85c38;
+  --muted #8a8578;
+  --border #d4cfc4;
+  --white #faf8f4;
+  --radius 4px;
+  --font-serif 'Instrument Serif', Georgia, serif;
+  --font-mono 'DM Mono', monospace;
+  --font-sans 'Pretendard', system-ui, sans-serif;
+}
+
+ { box-sizing border-box; margin 0; padding 0; }
+
+body {
+  background var(--paper);
+  color var(--ink);
+  font-family var(--font-sans);
+  min-height 100vh;
+  font-size 14px;
+  line-height 1.6;
+}
+
+ ---- LAYOUT ---- 
+.app { display flex; flex-direction column; min-height 100vh; }
+
+.screen { display none; flex 1; }
+.screen.active { display flex; flex-direction column; }
+
+ ---- HEADER ---- 
+.top-bar {
+  display flex; align-items center; justify-content space-between;
+  padding 14px 20px;
+  border-bottom 1px solid var(--border);
+  background var(--white);
+  position sticky; top 0; z-index 100;
+}
+.top-bar-title { font-family var(--font-serif); font-size 18px; letter-spacing -0.3px; }
+.top-bar-right { display flex; gap 8px; align-items center; }
+.badge {
+  font-family var(--font-mono); font-size 10px; letter-spacing 0.05em;
+  padding 3px 8px; border-radius 2px;
+  background var(--olive); color white; text-transform uppercase;
+}
+.badge.leader { background var(--rust); }
+
+ ---- NAV ---- 
+.bottom-nav {
+  display flex; border-top 1px solid var(--border);
+  background var(--white); position sticky; bottom 0;
+}
+.nav-btn {
+  flex 1; padding 12px 8px; border none; background none;
+  cursor pointer; font-family var(--font-mono); font-size 10px;
+  color var(--muted); letter-spacing 0.05em; text-transform uppercase;
+  display flex; flex-direction column; align-items center; gap 4px;
+  transition color 0.15s;
+}
+.nav-btn.active { color var(--ink); }
+.nav-btn svg { width 18px; height 18px; }
+
+ ---- LOGIN ---- 
+#screen-login {
+  justify-content center; align-items center;
+  padding 32px 24px;
+  background var(--paper);
+}
+.login-wrap { width 100%; max-width 360px; }
+.login-title {
+  font-family var(--font-serif); font-size 42px; line-height 1;
+  letter-spacing -1px; margin-bottom 4px;
+}
+.login-sub { color var(--muted); font-size 13px; margin-bottom 40px; }
+
+.form-group { margin-bottom 16px; }
+label { display block; font-family var(--font-mono); font-size 10px;
+  text-transform uppercase; letter-spacing 0.1em; color var(--muted); margin-bottom 6px; }
+input, select {
+  width 100%; padding 10px 12px;
+  border 1px solid var(--border); border-radius var(--radius);
+  background var(--white); color var(--ink);
+  font-family var(--font-sans); font-size 14px;
+  outline none; transition border-color 0.15s;
+}
+inputfocus, selectfocus { border-color var(--olive); }
+
+.role-chips { display flex; gap 8px; }
+.role-chip {
+  flex 1; padding 9px; border 1px solid var(--border);
+  border-radius var(--radius); background var(--white);
+  font-family var(--font-mono); font-size 11px; cursor pointer;
+  text-align center; transition all 0.15s; color var(--muted);
+}
+.role-chip.selected { border-color var(--olive); background var(--olive); color white; }
+
+.btn-primary {
+  width 100%; padding 12px; margin-top 24px;
+  background var(--ink); color var(--paper);
+  border none; border-radius var(--radius); cursor pointer;
+  font-family var(--font-mono); font-size 12px; letter-spacing 0.1em;
+  text-transform uppercase; transition opacity 0.15s;
+}
+.btn-primaryhover { opacity 0.85; }
+.btn-primarydisabled { opacity 0.4; cursor not-allowed; }
+
+.offline-note {
+  margin-top 20px; padding 10px 12px;
+  background var(--cream); border-radius var(--radius);
+  font-family var(--font-mono); font-size 10px; color var(--muted);
+  text-align center;
+}
+
+ ---- BOOKS SCREEN ---- 
+#screen-books { padding 0; }
+.content-scroll { flex 1; overflow-y auto; padding 16px; }
+
+.week-nav {
+  display flex; gap 6px; overflow-x auto;
+  padding 12px 16px; border-bottom 1px solid var(--border);
+  background var(--white);
+  scrollbar-width none;
+}
+.week-nav-webkit-scrollbar { display none; }
+.week-chip {
+  flex-shrink 0; padding 5px 14px;
+  border 1px solid var(--border); border-radius 20px;
+  background none; cursor pointer;
+  font-family var(--font-mono); font-size 11px; color var(--muted);
+  transition all 0.15s; white-space nowrap;
+}
+.week-chip.active { border-color var(--ink); background var(--ink); color var(--paper); }
+
+.book-card {
+  background var(--white); border 1px solid var(--border);
+  border-radius var(--radius); padding 14px 16px; margin-bottom 8px;
+  display flex; gap 12px; align-items flex-start;
+  transition border-color 0.15s;
+}
+.book-card.done { background var(--cream); }
+
+.book-check {
+  width 20px; height 20px; border 1.5px solid var(--border);
+  border-radius 50%; cursor pointer; flex-shrink 0;
+  display flex; align-items center; justify-content center;
+  margin-top 2px; transition all 0.15s;
+}
+.book-check.checked { background var(--olive); border-color var(--olive); }
+.book-check.checkedafter {
+  content ''; width 5px; height 9px;
+  border 2px solid white; border-top none; border-left none;
+  transform rotate(45deg) translateY(-1px);
+}
+
+.book-info { flex 1; min-width 0; }
+.book-title { font-weight 600; font-size 14px; line-height 1.4; }
+.book-title-ko { font-family var(--font-serif); font-size 13px; color var(--muted); }
+.book-author { font-family var(--font-mono); font-size 11px; color var(--muted); margin-top 3px; }
+.book-date { font-family var(--font-mono); font-size 10px; color var(--olive); margin-top 4px; }
+
+.book-actions { display flex; gap 4px; }
+.btn-icon {
+  width 28px; height 28px; border none; background none;
+  cursor pointer; color var(--muted); border-radius var(--radius);
+  display flex; align-items center; justify-content center;
+  transition all 0.15s;
+}
+.btn-iconhover { background var(--cream); color var(--rust); }
+
+.empty-state {
+  text-align center; padding 48px 24px; color var(--muted);
+}
+.empty-state-title { font-family var(--font-serif); font-size 22px; margin-bottom 8px; }
+.empty-state-sub { font-size 13px; }
+
+.fab {
+  position fixed; bottom 70px; right 16px;
+  width 48px; height 48px;
+  background var(--ink); color var(--paper);
+  border none; border-radius 50%; cursor pointer;
+  font-size 22px; display flex; align-items center; justify-content center;
+  box-shadow 0 4px 12px rgba(0,0,0,0.2); transition transform 0.15s;
+  display none;
+}
+.fabhover { transform scale(1.05); }
+.fab.visible { display flex; }
+
+ ---- PROGRESS ---- 
+#screen-progress { padding 0; }
+
+.stats-row {
+  display grid; grid-template-columns 1fr 1fr;
+  gap 12px; padding 16px;
+}
+.stat-card {
+  background var(--white); border 1px solid var(--border);
+  border-radius var(--radius); padding 16px; text-align center;
+}
+.stat-num {
+  font-family var(--font-serif); font-size 36px; line-height 1;
+  letter-spacing -1px; color var(--olive);
+}
+.stat-label {
+  font-family var(--font-mono); font-size 10px; text-transform uppercase;
+  letter-spacing 0.08em; color var(--muted); margin-top 4px;
+}
+
+.cal-wrap { padding 0 16px 16px; }
+.cal-header {
+  display flex; justify-content space-between; align-items center;
+  margin-bottom 12px;
+}
+.cal-title { font-family var(--font-serif); font-size 18px; }
+.cal-nav-btn {
+  width 28px; height 28px; border 1px solid var(--border);
+  border-radius var(--radius); background none; cursor pointer;
+  display flex; align-items center; justify-content center;
+  color var(--muted); transition all 0.15s;
+}
+.cal-nav-btnhover { background var(--cream); }
+
+.cal-grid { display grid; grid-template-columns repeat(7, 1fr); gap 2px; }
+.cal-dow {
+  font-family var(--font-mono); font-size 9px; text-transform uppercase;
+  letter-spacing 0.05em; color var(--muted); text-align center; padding 4px 0;
+}
+.cal-day {
+  aspect-ratio 1; display flex; align-items center; justify-content center;
+  font-family var(--font-mono); font-size 12px; border-radius 50%;
+  color var(--ink); cursor default;
+}
+.cal-day.other-month { color var(--border); }
+.cal-day.done { background var(--olive); color white; font-weight 500; }
+.cal-day.today { border 1.5px solid var(--olive); }
+
+ ---- LEADERBOARD ---- 
+#screen-leader { padding 0; }
+
+.leader-filter {
+  padding 10px 16px; border-bottom 1px solid var(--border);
+  background var(--white);
+}
+.leader-filter select {
+  width auto; padding 6px 10px; font-size 13px;
+}
+
+.matrix-scroll { flex 1; overflow auto; }
+.matrix-table {
+  width max-content; min-width 100%;
+  border-collapse collapse;
+}
+.matrix-table th, .matrix-table td {
+  padding 10px 14px; text-align center;
+  border-bottom 1px solid var(--border);
+  white-space nowrap;
+}
+.matrix-table thead th {
+  background var(--white); font-family var(--font-mono);
+  font-size 10px; text-transform uppercase; letter-spacing 0.05em;
+  color var(--muted); position sticky; top 0;
+  border-bottom 2px solid var(--border);
+}
+.matrix-table thead th.name-col {
+  position sticky; left 0; z-index 2; text-align left;
+}
+.matrix-table tbody td.name-col {
+  position sticky; left 0; background var(--white);
+  font-weight 600; text-align left; z-index 1;
+}
+.matrix-table tbody trnth-child(even) td { background var(--cream); }
+.matrix-table tbody trnth-child(even) td.name-col { background var(--cream); }
+.matrix-table tbody trhover td { background var(--border); }
+
+.check-v { color var(--olive); font-weight 700; font-size 16px; }
+.check-dash { color var(--border); }
+
+.total-cell { font-family var(--font-mono); font-weight 500; color var(--olive); }
+
+ ---- MODAL ---- 
+.modal-overlay {
+  display none; position fixed; inset 0;
+  background rgba(26,26,24,0.5); z-index 200;
+  align-items flex-end; justify-content center;
+}
+.modal-overlay.open { display flex; }
+.modal {
+  background var(--white); border-radius 12px 12px 0 0;
+  padding 24px 20px 32px; width 100%; max-width 480px;
+  max-height 85vh; overflow-y auto;
+  animation slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform translateY(40px); opacity 0; } }
+.modal-title {
+  font-family var(--font-serif); font-size 22px; margin-bottom 20px;
+}
+.modal-actions { display flex; gap 8px; margin-top 20px; }
+.btn-secondary {
+  flex 1; padding 11px; border 1px solid var(--border);
+  border-radius var(--radius); background none; cursor pointer;
+  font-family var(--font-mono); font-size 11px; letter-spacing 0.08em;
+  text-transform uppercase; color var(--muted); transition all 0.15s;
+}
+.btn-secondaryhover { background var(--cream); }
+.btn-save {
+  flex 2; padding 11px; background var(--ink); color var(--paper);
+  border none; border-radius var(--radius); cursor pointer;
+  font-family var(--font-mono); font-size 11px; letter-spacing 0.08em;
+  text-transform uppercase; transition opacity 0.15s;
+}
+.btn-savehover { opacity 0.85; }
+
+ ---- SYNC INDICATOR ---- 
+.sync-dot {
+  width 6px; height 6px; border-radius 50%;
+  background var(--olive-light); display inline-block;
+}
+.sync-dot.offline { background var(--muted); }
+.sync-dot.syncing { animation pulse 1s infinite; background var(--olive); }
+@keyframes pulse { 0%,100% { opacity 1; } 50% { opacity 0.3; } }
+
+.btn-text {
+  background none; border none; cursor pointer;
+  font-family var(--font-mono); font-size 11px; color var(--muted);
+  text-decoration underline; text-underline-offset 2px;
+}
+.btn-texthover { color var(--ink); }
+
+ ---- TOAST ---- 
+.toast {
+  position fixed; bottom 80px; left 50%; transform translateX(-50%);
+  background var(--ink); color var(--paper); padding 9px 16px;
+  border-radius var(--radius); font-family var(--font-mono); font-size 12px;
+  opacity 0; transition opacity 0.2s; pointer-events none; white-space nowrap;
+  z-index 300;
+}
+.toast.show { opacity 1; }
+style
+head
+body
+
+div class=app id=app
+
+  !-- =========================================================
+       LOGIN
+  ========================================================= --
+  div class=screen active id=screen-login
+    div class=login-wrap
+      div class=login-titleTriplebrSchooldiv
+      div class=login-sub독서 기록  Reading Trackerdiv
+
+      div class=form-group
+        label이름  Namelabel
+        input type=text id=input-name placeholder=홍길동
+      div
+      div class=form-group
+        label그룹  Grouplabel
+        select id=input-group
+          option걸돔option
+          option블린option
+          option리뉴젠option
+          option코너스톤option
+          optionOtheroption
+        select
+      div
+      div class=form-group
+        label역할  Rolelabel
+        div class=role-chips
+          div class=role-chip selected data-role=student onclick=selectRole(this)학생  Studentdiv
+          div class=role-chip data-role=leader onclick=selectRole(this)리더  Leaderdiv
+        div
+      div
+
+      button class=btn-primary id=btn-login onclick=doLogin()시작하기  Startbutton
+      div class=offline-note id=offline-noteFirebase 미연결 — 로컬 저장 모드로 실행 중div
+    div
+  div
+
+  !-- =========================================================
+       MAIN APP WRAPPER (books + progress + leader)
+  ========================================================= --
+  div class=screen id=screen-main
+
+    !-- Top bar --
+    div class=top-bar
+      span class=top-bar-title id=topbar-title도서 목록span
+      div class=top-bar-right
+        span class=sync-dot id=sync-dot title=sync statusspan
+        button class=btn-text onclick=syncNow()동기화button
+        span class=badge id=role-badge학생span
+        button class=btn-text onclick=logout() style=colorvar(--muted)로그아웃button
+      div
+    div
+
+    !-- BOOKS TAB --
+    div id=tab-books class=tab-content style=displayflex;flex-directioncolumn;flex1
+      div class=week-nav id=week-navdiv
+      div class=content-scroll id=book-listdiv
+    div
+
+    !-- PROGRESS TAB --
+    div id=tab-progress class=tab-content style=displaynone;flex-directioncolumn;overflow-yauto
+      div class=stats-row
+        div class=stat-card
+          div class=stat-num id=stat-streak0div
+          div class=stat-label주 연속  Streakdiv
+        div
+        div class=stat-card
+          div class=stat-num id=stat-total0div
+          div class=stat-label읽은 책  Readdiv
+        div
+      div
+      div class=cal-wrap
+        div class=cal-header
+          button class=cal-nav-btn onclick=calPrev()&#8592;button
+          div class=cal-title id=cal-titlediv
+          button class=cal-nav-btn onclick=calNext()&#8594;button
+        div
+        div class=cal-grid id=cal-griddiv
+      div
+    div
+
+    !-- LEADER TAB --
+    div id=tab-leader class=tab-content style=displaynone;flex-directioncolumn;flex1
+      div class=leader-filter
+        select id=filter-group onchange=renderLeader()
+          option value=모든 그룹  All Groupsoption
+          option걸돔optionoption블린option
+          option리뉴젠optionoption코너스톤option
+        select
+      div
+      div class=matrix-scroll
+        table class=matrix-table id=matrix-tabletable
+      div
+    div
+
+    !-- Bottom nav --
+    div class=bottom-nav
+      button class=nav-btn active id=nav-books onclick=switchTab('books')
+        svg viewBox=0 0 24 24 fill=currentColorpath d=M18 2H6C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4zsvg
+        도서목록
+      button
+      button class=nav-btn id=nav-progress onclick=switchTab('progress')
+        svg viewBox=0 0 24 24 fill=currentColorpath d=M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zsvg
+        진도
+      button
+      button class=nav-btn id=nav-leader onclick=switchTab('leader')
+        svg viewBox=0 0 24 24 fill=currentColorpath d=M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 11h-5.5v10H22V11zsvg
+        리더보드
+      button
+    div
+  div
+
+div
+
+!-- ADD BOOK FAB --
+button class=fab id=fab onclick=openAddBook()+button
+
+!-- ADD BOOK MODAL --
+div class=modal-overlay id=modal-add onclick=closeModal(event)
+  div class=modal onclick=event.stopPropagation()
+    div class=modal-title책 추가  Add Bookdiv
+    div class=form-group
+      label제목 (한국어)label
+      input type=text id=m-title-ko placeholder=자기 자신을 알라
+    div
+    div class=form-group
+      labelTitle (English)label
+      input type=text id=m-title placeholder=Know Thyself
+    div
+    div class=form-group
+      label저자  Authorlabel
+      input type=text id=m-author placeholder=
+    div
+    div class=form-group
+      label설명  Descriptionlabel
+      input type=text id=m-desc placeholder=
+    div
+    div class=modal-actions
+      button class=btn-secondary onclick=document.getElementById('modal-add').classList.remove('open')취소button
+      button class=btn-save onclick=saveBook()저장  Savebutton
+    div
+  div
+div
+
+!-- TOAST --
+div class=toast id=toastdiv
+
+script
+ ============================================================
+ STATE
+ ============================================================
+let state = {
+  user null,
+  books [],        [{id, title, titleKo, author, desc, week}]
+  records [],      [{userId, bookId, date}]
+  users [],        [{id, name, group, role}]
+  selectedWeek 1,
+  maxWeek 1,
+  calYear new Date().getFullYear(),
+  calMonth new Date().getMonth(),
+};
+
+const LS_KEY = 'triple_v1';
+
+function loadLocal() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LS_KEY)  '{}');
+    if (d.books) state.books = d.books;
+    if (d.records) state.records = d.records;
+    if (d.users) state.users = d.users;
+    if (d.user) { state.user = d.user; return true; }
+  } catch(e) {}
+  return false;
+}
+
+function saveLocal() {
+  localStorage.setItem(LS_KEY, JSON.stringify({
+    user state.user,
+    books state.books,
+    records state.records,
+    users state.users,
+  }));
+}
+
+ ============================================================
+ LOGIN
+ ============================================================
+let selectedRole = 'student';
+function selectRole(el) {
+  document.querySelectorAll('.role-chip').forEach(c = c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedRole = el.dataset.role;
+}
+
+function doLogin() {
+  const name = document.getElementById('input-name').value.trim();
+  const group = document.getElementById('input-group').value;
+  if (!name) { showToast('이름을 입력해주세요'); return; }
+
+  const existing = state.users.find(u = u.name === name && u.group === group);
+  let user;
+  if (existing) {
+    user = existing;
+  } else {
+    user = { id uid(), name, group, role selectedRole };
+    state.users.push(user);
+  }
+  state.user = user;
+  saveLocal();
+
+  if (window.__firebaseReady) syncNow();
+  enterApp();
+}
+
+function enterApp() {
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-main').classList.add('active');
+  document.getElementById('role-badge').textContent = state.user.role === 'leader'  '리더'  '학생';
+  document.getElementById('role-badge').className = 'badge' + (state.user.role === 'leader'  ' leader'  '');
+  if (state.user.role === 'leader') document.getElementById('fab').classList.add('visible');
+
+  recalcMaxWeek();
+  renderWeekNav();
+  renderBooks();
+  updateSyncDot();
+}
+
+function logout() {
+  state.user = null;
+  saveLocal();
+  location.reload();
+}
+
+ ============================================================
+ TABS
+ ============================================================
+const tabTitles = { books '도서 목록', progress '내 진도', leader '리더보드' };
+
+function switchTab(tab) {
+  ['books','progress','leader'].forEach(t = {
+    document.getElementById('tab-' + t).style.display = 'none';
+    document.getElementById('nav-' + t).classList.remove('active');
+  });
+  document.getElementById('tab-' + tab).style.display = 'flex';
+  document.getElementById('nav-' + tab).classList.add('active');
+  document.getElementById('topbar-title').textContent = tabTitles[tab];
+  document.getElementById('fab').style.display =
+    (tab === 'books' && state.user.role === 'leader')  'flex'  'none';
+
+  if (tab === 'progress') renderProgress();
+  if (tab === 'leader') renderLeader();
+}
+
+ ============================================================
+ WEEK NAV
+ ============================================================
+function recalcMaxWeek() {
+  const weeks = state.books.map(b = b.week);
+  state.maxWeek = weeks.length  Math.max(...weeks)  1;
+  if (state.selectedWeek  state.maxWeek) state.selectedWeek = state.maxWeek;
+}
+
+function renderWeekNav() {
+  const nav = document.getElementById('week-nav');
+  nav.innerHTML = '';
+  const total = state.user.role === 'leader'  state.maxWeek + 1  state.maxWeek;
+  for (let w = 1; w = total; w++) {
+    const el = document.createElement('button');
+    el.className = 'week-chip' + (w === state.selectedWeek  ' active'  '');
+    el.textContent = w === total && state.user.role === 'leader' && w  state.maxWeek
+       '+ 새 주차'  `${w}주차`;
+    el.onclick = () = { state.selectedWeek = w; renderWeekNav(); renderBooks(); };
+    nav.appendChild(el);
+  }
+}
+
+ ============================================================
+ BOOKS
+ ============================================================
+function renderBooks() {
+  const list = document.getElementById('book-list');
+  const weekBooks = state.books.filter(b = b.week === state.selectedWeek);
+  const myRecords = state.records.filter(r = r.userId === state.user.id);
+
+  if (weekBooks.length === 0) {
+    list.innerHTML = `div class=empty-state
+      div class=empty-state-title${state.selectedWeek}주차 도서 없음div
+      div class=empty-state-sub${state.user.role === 'leader'  '+ 버튼으로 추가하세요'  '리더가 곧 추가할 예정이에요'}div
+    div`;
+    return;
+  }
+
+  list.innerHTML = weekBooks.map(book = {
+    const rec = myRecords.find(r = r.bookId === book.id);
+    const done = !!rec;
+    return `div class=book-card ${done  'done'  ''} id=card-${book.id}
+      div class=book-check ${done  'checked'  ''} onclick=toggleBook('${book.id}')div
+      div class=book-info
+        div class=book-title${esc(book.title)}div
+        ${book.titleKo  `div class=book-title-ko${esc(book.titleKo)}div`  ''}
+        ${book.author  `div class=book-author${esc(book.author)}div`  ''}
+        ${rec  `div class=book-date${rec.date} 완료div`  ''}
+        ${book.desc  `div style=font-size12px;colorvar(--muted);margin-top4px${esc(book.desc)}div`  ''}
+      div
+      ${state.user.role === 'leader'  `div class=book-actions
+        button class=btn-icon onclick=deleteBook('${book.id}') title=삭제
+          svg viewBox=0 0 24 24 width=14 height=14 fill=currentColorpath d=M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4zsvg
+        button
+      div`  ''}
+    div`;
+  }).join('');
+}
+
+function toggleBook(bookId) {
+  const userId = state.user.id;
+  const idx = state.records.findIndex(r = r.userId === userId && r.bookId === bookId);
+  if (idx = 0) {
+    state.records.splice(idx, 1);
+    if (window.__firebaseReady) fsDeleteRecord(userId, bookId);
+  } else {
+    const rec = { userId, bookId, date today() };
+    state.records.push(rec);
+    if (window.__firebaseReady) fsUpsertRecord(rec);
+  }
+  saveLocal();
+  renderBooks();
+}
+
+ ============================================================
+ ADD  DELETE BOOK
+ ============================================================
+function openAddBook() {
+  document.getElementById('modal-add').classList.add('open');
+}
+function closeModal(e) {
+  if (e.target.classList.contains('modal-overlay'))
+    e.target.classList.remove('open');
+}
+
+function saveBook() {
+  const titleKo = document.getElementById('m-title-ko').value.trim();
+  const title = document.getElementById('m-title').value.trim();
+  const author = document.getElementById('m-author').value.trim();
+  const desc = document.getElementById('m-desc').value.trim();
+  if (!titleKo && !title) { showToast('제목을 입력하세요'); return; }
+
+  const book = { id uid(), title title  titleKo, titleKo, author, desc, week state.selectedWeek };
+  state.books.push(book);
+  if (book.week  state.maxWeek) {
+    state.maxWeek = book.week;
+    state.selectedWeek = book.week;
+  }
+  saveLocal();
+  if (window.__firebaseReady) fsUpsertBook(book);
+
+  document.getElementById('modal-add').classList.remove('open');
+  ['m-title-ko','m-title','m-author','m-desc'].forEach(id =
+    document.getElementById(id).value = '');
+
+  recalcMaxWeek();
+  renderWeekNav();
+  renderBooks();
+  showToast('추가됐어');
+}
+
+function deleteBook(bookId) {
+  if (!confirm('이 책을 삭제할까요')) return;
+  state.books = state.books.filter(b = b.id !== bookId);
+  state.records = state.records.filter(r = r.bookId !== bookId);
+  saveLocal();
+  if (window.__firebaseReady) fsDeleteBook(bookId);
+  recalcMaxWeek();
+  renderWeekNav();
+  renderBooks();
+}
+
+ ============================================================
+ PROGRESS
+ ============================================================
+function renderProgress() {
+  const myRecords = state.records.filter(r = r.userId === state.user.id);
+  const doneDates = new Set(myRecords.map(r = r.date));
+
+  document.getElementById('stat-total').textContent = myRecords.length;
+  document.getElementById('stat-streak').textContent = calcStreak(doneDates);
+
+  renderCalendar(doneDates);
+}
+
+function calcStreak(doneDates) {
+  let streak = 0;
+  const now = new Date();
+   Week-based count consecutive weeks with at least one completion
+  for (let w = 0; w  52; w++) {
+    const mon = new Date(now);
+    mon.setDate(mon.getDate() - mon.getDay() + 1 - w  7);
+    const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+    const hasRead = [...doneDates].some(d = {
+      const dt = new Date(d);
+      return dt = mon && dt = sun;
+    });
+    if (!hasRead) break;
+    streak++;
+  }
+  return streak;
+}
+
+function renderCalendar(doneDates) {
+  const { calYear y, calMonth m } = state;
+  const months_ko = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-title').textContent = `${y}년 ${months_ko[m]}`;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  const dows = ['일','월','화','수','목','금','토'];
+  dows.forEach(d = {
+    const el = document.createElement('div');
+    el.className = 'cal-dow'; el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const first = new Date(y, m, 1).getDay();
+  const days = new Date(y, m + 1, 0).getDate();
+  const todayStr = today();
+
+  for (let i = 0; i  first; i++) {
+    const el = document.createElement('div'); el.className = 'cal-day other-month';
+    grid.appendChild(el);
+  }
+  for (let d = 1; d = days; d++) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const el = document.createElement('div');
+    let cls = 'cal-day';
+    if (doneDates.has(dateStr)) cls += ' done';
+    if (dateStr === todayStr) cls += ' today';
+    el.className = cls; el.textContent = d;
+    grid.appendChild(el);
+  }
+}
+
+function calPrev() {
+  state.calMonth--;
+  if (state.calMonth  0) { state.calMonth = 11; state.calYear--; }
+  const myRecords = state.records.filter(r = r.userId === state.user.id);
+  renderCalendar(new Set(myRecords.map(r = r.date)));
+  const months_ko = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-title').textContent = `${state.calYear}년 ${months_ko[state.calMonth]}`;
+}
+function calNext() {
+  state.calMonth++;
+  if (state.calMonth  11) { state.calMonth = 0; state.calYear++; }
+  const myRecords = state.records.filter(r = r.userId === state.user.id);
+  renderCalendar(new Set(myRecords.map(r = r.date)));
+  const months_ko = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-title').textContent = `${state.calYear}년 ${months_ko[state.calMonth]}`;
+}
+
+ ============================================================
+ LEADERBOARD
+ ============================================================
+function renderLeader() {
+  const filterGroup = document.getElementById('filter-group').value;
+  let users = state.users.filter(u = u.role === 'student');
+  if (filterGroup) users = users.filter(u = u.group === filterGroup);
+
+  const table = document.getElementById('matrix-table');
+  if (!state.books.length  !users.length) {
+    table.innerHTML = `trtd colspan=99 style=padding40px;text-aligncenter;colorvar(--muted);font-familyvar(--font-mono);font-size12px데이터 없음  No datatdtr`;
+    return;
+  }
+
+  const thead = `theadtr
+    th class=name-col이름th
+    th그룹th
+    ${state.books.map(b = `th title=${b.title}${b.titleKo  b.title}brspan style=font-weight400;opacity.6${b.week}주spanth`).join('')}
+    th합계th
+  trthead`;
+
+  const tbody = users.map(user = {
+    const userRecs = state.records.filter(r = r.userId === user.id);
+    const total = userRecs.length;
+    const cells = state.books.map(book = {
+      const done = userRecs.some(r = r.bookId === book.id);
+      return `td${done  'span class=check-vVspan'  'span class=check-dash-span'}td`;
+    }).join('');
+    return `tr
+      td class=name-col${esc(user.name)}td
+      td style=font-familyvar(--font-mono);font-size11px${esc(user.group)}td
+      ${cells}
+      td class=total-cell${total}td
+    tr`;
+  }).join('');
+
+  table.innerHTML = thead + 'tbody' + tbody + 'tbody';
+}
+
+ ============================================================
+ FIREBASE SYNC
+ ============================================================
+function setSyncDot(status) {
+  const dot = document.getElementById('sync-dot');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + status;
+}
+
+function updateSyncDot() {
+  setSyncDot(window.__firebaseReady  'active'  'offline');
+}
+
+async function syncNow() {
+  if (!window.__firebaseReady) { showToast('Firebase 미연결 (오프라인 모드)'); return; }
+  setSyncDot('syncing');
+  try {
+    await Promise.all([
+      fsPushUsers(), fsPushBooks(), fsPushRecords(),
+      fsPullBooks(), fsPullRecords(), fsPullUsers()
+    ]);
+    saveLocal();
+    recalcMaxWeek();
+    renderWeekNav();
+    renderBooks();
+    setSyncDot('active');
+    showToast('동기화 완료');
+  } catch(e) {
+    setSyncDot('offline');
+    showToast('동기화 실패');
+  }
+}
+
+ Push helpers
+async function fsPushUsers() {
+  const { collection col, doc, setDoc } = window.__fsModules;
+  for (const u of state.users) {
+    await setDoc(doc(window.__db, 'users', u.id), u);
+  }
+}
+async function fsPushBooks() {
+  const { doc, setDoc } = window.__fsModules;
+  for (const b of state.books) {
+    await setDoc(doc(window.__db, 'books', b.id), b);
+  }
+}
+async function fsPushRecords() {
+  const { doc, setDoc } = window.__fsModules;
+  for (const r of state.records) {
+    const id = r.userId + '_' + r.bookId;
+    await setDoc(doc(window.__db, 'read_records', id), r);
+  }
+}
+
+ Pull helpers
+async function fsPullBooks() {
+  const { collection col, getDocs } = window.__fsModules;
+  const snap = await getDocs(col(window.__db, 'books'));
+  snap.forEach(d = {
+    const data = d.data();
+    if (!state.books.find(b = b.id === data.id)) state.books.push(data);
+  });
+}
+async function fsPullRecords() {
+  const { collection col, getDocs } = window.__fsModules;
+  const snap = await getDocs(col(window.__db, 'read_records'));
+  snap.forEach(d = {
+    const data = d.data();
+    const key = r = r.userId + '_' + r.bookId;
+    if (!state.records.find(r = key(r) === key(data))) state.records.push(data);
+  });
+}
+async function fsPullUsers() {
+  const { collection col, getDocs } = window.__fsModules;
+  const snap = await getDocs(col(window.__db, 'users'));
+  snap.forEach(d = {
+    const data = d.data();
+    if (!state.users.find(u = u.id === data.id)) state.users.push(data);
+  });
+}
+
+ Realtime ops
+async function fsUpsertBook(book) {
+  const { doc, setDoc } = window.__fsModules;
+  await setDoc(doc(window.__db, 'books', book.id), book);
+}
+async function fsDeleteBook(bookId) {
+  const { doc, deleteDoc } = window.__fsModules;
+  await deleteDoc(doc(window.__db, 'books', bookId));
+}
+async function fsUpsertRecord(rec) {
+  const { doc, setDoc } = window.__fsModules;
+  await setDoc(doc(window.__db, 'read_records', rec.userId + '_' + rec.bookId), rec);
+}
+async function fsDeleteRecord(userId, bookId) {
+  const { doc, deleteDoc } = window.__fsModules;
+  await deleteDoc(doc(window.__db, 'read_records', userId + '_' + bookId));
+}
+
+ ============================================================
+ UTILS
+ ============================================================
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function esc(s) {
+  return String(s'').replace(&g,'&amp;').replace(g,'&lt;').replace(g,'&gt;');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() = t.classList.remove('show'), 2200);
+}
+
+ ============================================================
+ INIT
+ ============================================================
+document.addEventListener('firebase-ready', () = {
+  document.getElementById('offline-note').textContent =
+    window.__firebaseReady
+       'Firebase 연결됨  Connected'
+       'Firebase 미연결 — 로컬 모드  Offline mode';
+});
+
+ Auto-login if session exists
+if (loadLocal() && state.user) {
+  document.getElementById('screen-login').classList.remove('active');
+  enterApp();
+} else {
+  loadLocal();
+}
+script
+body
+html
