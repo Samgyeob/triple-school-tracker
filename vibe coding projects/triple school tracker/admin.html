@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Triple School — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Pretendard:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    // ── paste your config ──
+    const firebaseConfig = {
+      apiKey: "AIzaSyDcHNc3wuECr_obd7BneB_8ZvqP5EdkQyY",
+      authDomain: "triple-school-tracker.firebaseapp.com",
+      projectId: "triple-school-tracker",
+      storageBucket: "triple-school-tracker.firebasestorage.app",
+      messagingSenderId: "156047796789",
+      appId: "1:156047796789:web:b945a1b1e7426f86a71f7c"
+    };
+
+    let db = null, firebaseReady = false;
+    try {
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      firebaseReady = !firebaseConfig.apiKey.includes('YOUR_');
+    } catch(e) { console.warn('Firebase init failed', e); }
+
+    window.__db = db;
+    window.__firebaseReady = firebaseReady;
+    window.__fs = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, addDoc, serverTimestamp };
+    document.dispatchEvent(new Event('firebase-ready'));
+  </script>
+
+  <style>
+    /* ── VARIABLES ── */
+    :root {
+      /* defaults — overridden by theme system */
+      --ink: #1a1a18;
+      --paper: #f5f2eb;
+      --cream: #ede9df;
+      --accent: #6b7c4e;
+      --accent2: #b85c38;
+      --muted: #8a8578;
+      --border: #d4cfc4;
+      --white: #faf8f4;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+      --font-mono: 'DM Mono', monospace;
+      --font-sans: 'Pretendard', system-ui, sans-serif;
+      --radius: 4px;
+      --banner-url: none;
+    }
+
+    /* ── THEME PRESETS ── */
+    [data-theme="dark"] {
+      --ink: #f0ebe2; --paper: #141412; --cream: #1e1c19;
+      --accent: #a8b88a; --accent2: #d4866a;
+      --muted: #6a6460; --border: #2e2c28; --white: #1a1816;
+    }
+    [data-theme="navy"] {
+      --ink: #e8eaf0; --paper: #0d1117; --cream: #161b22;
+      --accent: #58a6ff; --accent2: #f78166;
+      --muted: #6e7681; --border: #30363d; --white: #13171f;
+    }
+    [data-theme="rose"] {
+      --ink: #2d1f24; --paper: #fdf0f2; --cream: #f7dde3;
+      --accent: #c0576e; --accent2: #8b3a4e;
+      --muted: #9a7880; --border: #e8c8cf; --white: #fff5f7;
+    }
+    [data-theme="forest"] {
+      --ink: #1c2416; --paper: #f0f4ec; --cream: #e2ebda;
+      --accent: #3d6b32; --accent2: #8b5a2b;
+      --muted: #7a8c72; --border: #c8d8be; --white: #f8fbf5;
+    }
+    [data-theme="slate"] {
+      --ink: #e2e8f0; --paper: #0f172a; --cream: #1e293b;
+      --accent: #94a3b8; --accent2: #f59e0b;
+      --muted: #64748b; --border: #334155; --white: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--paper); color: var(--ink);
+      font-family: var(--font-sans); min-height: 100vh; font-size: 14px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ── AUTH GATE ── */
+    #auth-gate {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh; padding: 32px 24px;
+    }
+    .auth-logo {
+      font-family: var(--font-serif); font-size: 3rem; line-height: 1;
+      letter-spacing: -2px; margin-bottom: 4px; color: var(--ink);
+    }
+    .auth-sub { font-family: var(--font-mono); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 40px; }
+    .auth-box {
+      width: 100%; max-width: 340px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px;
+    }
+    .auth-label { font-family: var(--font-mono); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; display: block; }
+    .auth-input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--paper); color: var(--ink);
+      font-family: var(--font-mono); font-size: 14px; outline: none;
+      transition: border-color 0.15s; margin-bottom: 16px;
+    }
+    .auth-input:focus { border-color: var(--accent); }
+    .auth-err { font-family: var(--font-mono); font-size: 11px; color: var(--accent2);
+      margin-top: -8px; margin-bottom: 12px; min-height: 16px; }
+    .btn-enter {
+      width: 100%; padding: 12px; background: var(--ink); color: var(--paper);
+      border: none; border-radius: var(--radius); cursor: pointer;
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em;
+      text-transform: uppercase; transition: opacity 0.15s;
+    }
+    .btn-enter:hover { opacity: 0.8; }
+
+    /* ── APP SHELL ── */
+    #admin-app { display: none; flex-direction: column; min-height: 100vh; }
+
+    /* Banner */
+    .banner {
+      height: 120px;
+      background: var(--cream);
+      background-image: var(--banner-url);
+      background-size: cover; background-position: center;
+      position: relative; overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .banner-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.35));
+      display: flex; align-items: flex-end; padding: 14px 20px;
+    }
+    .banner-title {
+      font-family: var(--font-serif); font-size: 22px; color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5); letter-spacing: -0.5px;
+    }
+    .banner-title span { font-style: italic; opacity: 0.8; font-size: 14px; margin-left: 8px; }
+
+    /* Top bar */
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; background: var(--white); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .top-bar-left { display: flex; align-items: center; gap: 10px; }
+    .admin-badge {
+      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em;
+      padding: 3px 8px; border-radius: 2px;
+      background: var(--accent2); color: #fff; text-transform: uppercase;
+    }
+    .top-bar-right { display: flex; gap: 8px; }
+    .btn-sm {
+      padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: none; cursor: pointer; font-family: var(--font-mono); font-size: 10px;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+      transition: all 0.15s;
+    }
+    .btn-sm:hover { background: var(--cream); color: var(--ink); }
+    .btn-sm.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    /* Sidebar + Content */
+    .layout { display: flex; flex: 1; }
+    .sidebar {
+      width: 200px; min-width: 200px; background: var(--white);
+      border-right: 1px solid var(--border); padding: 16px 0;
+      position: sticky; top: 49px; height: calc(100vh - 49px);
+      overflow-y: auto;
+    }
+    .sidebar-section {
+      font-family: var(--font-mono); font-size: 9px; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--muted); padding: 12px 16px 6px;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 16px; cursor: pointer; color: var(--muted);
+      font-size: 13px; border-left: 2px solid transparent;
+      transition: all 0.15s; background: none; border-top: none;
+      border-right: none; border-bottom: none; width: 100%; text-align: left;
+      font-family: var(--font-sans);
+    }
+    .sidebar-item:hover { color: var(--ink); background: var(--cream); }
+    .sidebar-item.active { color: var(--ink); border-left-color: var(--accent); background: var(--cream); font-weight: 500; }
+    .sidebar-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .content { flex: 1; padding: 24px; max-width: 900px; overflow-x: hidden; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .panel-title { font-family: var(--font-serif); font-size: 26px; margin-bottom: 4px; }
+    .panel-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 24px; letter-spacing: 0.05em; }
+
+    /* Cards */
+    .card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+    }
+    .card-title {
+      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px;
+    }
+
+    /* Form elements */
+    .form-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .form-group { flex: 1; min-width: 140px; }
+    label {
+      display: block; font-family: var(--font-mono); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 5px;
+    }
+    input[type=text], input[type=password], input[type=number], select, textarea {
+      width: 100%; padding: 9px 11px; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--paper); color: var(--ink);
+      font-family: var(--font-sans); font-size: 13px; outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 72px; }
+    select option { background: var(--paper); }
+
+    .btn-primary {
+      padding: 9px 20px; background: var(--ink); color: var(--paper);
+      border: none; border-radius: var(--radius); cursor: pointer;
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase; transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.8; }
+    .btn-danger {
+      padding: 9px 20px; background: var(--accent2); color: #fff;
+      border: none; border-radius: var(--radius); cursor: pointer;
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase; transition: opacity 0.15s;
+    }
+    .btn-danger:hover { opacity: 0.8; }
+
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted); text-align: left;
+      padding: 8px 10px; border-bottom: 2px solid var(--border);
+    }
+    .data-table td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--cream); }
+    .data-table .actions { display: flex; gap: 6px; }
+
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 2px;
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em;
+    }
+    .tag-student { background: var(--cream); color: var(--muted); }
+    .tag-leader { background: rgba(107,124,78,0.15); color: var(--accent); }
+    .tag-admin { background: var(--accent2); color: #fff; }
+
+    /* Stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-box {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; text-align: center;
+    }
+    .stat-num {
+      font-family: var(--font-serif); font-size: 32px; line-height: 1;
+      letter-spacing: -1px; color: var(--accent);
+    }
+    .stat-label {
+      font-family: var(--font-mono); font-size: 9px; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); margin-top: 4px;
+    }
+
+    /* Theme picker */
+    .theme-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .theme-swatch {
+      width: 48px; height: 48px; border-radius: 50%; cursor: pointer;
+      border: 3px solid transparent; transition: all 0.15s;
+      position: relative; overflow: hidden;
+    }
+    .theme-swatch.active { border-color: var(--accent); transform: scale(1.1); }
+    .theme-swatch::after {
+      content: attr(data-label);
+      position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+      font-family: var(--font-mono); font-size: 9px; color: var(--muted);
+      white-space: nowrap;
+    }
+    .theme-swatch-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .theme-swatch-label { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+
+    /* Banner upload */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 32px; text-align: center; cursor: pointer;
+      transition: all 0.2s; margin-bottom: 12px;
+    }
+    .upload-zone:hover { border-color: var(--accent); background: var(--cream); }
+    .upload-zone-icon { font-size: 2rem; margin-bottom: 8px; }
+    .upload-zone-text { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+    .banner-preview {
+      width: 100%; height: 100px; object-fit: cover;
+      border-radius: var(--radius); border: 1px solid var(--border);
+      margin-bottom: 10px; display: none;
+    }
+
+    /* CSV area */
+    .csv-area {
+      width: 100%; font-family: var(--font-mono); font-size: 12px;
+      background: var(--paper); color: var(--ink); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; resize: vertical; min-height: 120px;
+      outline: none; margin-bottom: 10px;
+    }
+    .csv-area:focus { border-color: var(--accent); }
+
+    /* Notice */
+    .notice-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; margin-bottom: 10px; background: var(--white);
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    }
+    .notice-text { font-size: 13px; flex: 1; }
+    .notice-date { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* Group chips */
+    .group-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .group-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px;
+      font-size: 12px; background: var(--white);
+    }
+    .group-chip-del {
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      font-size: 14px; line-height: 1; padding: 0;
+      transition: color 0.15s;
+    }
+    .group-chip-del:hover { color: var(--accent2); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px);
+      background: var(--ink); color: var(--paper); padding: 10px 18px;
+      border-radius: 20px; font-family: var(--font-mono); font-size: 12px;
+      opacity: 0; transition: all 0.25s; pointer-events: none; white-space: nowrap; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Confirm modal */
+    .modal-bg {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal-box {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; max-width: 340px; width: 90%;
+      animation: popIn 0.2s ease;
+    }
+    @keyframes popIn { from { transform: scale(0.93); opacity: 0; } }
+    .modal-q { font-family: var(--font-serif); font-size: 18px; margin-bottom: 8px; }
+    .modal-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .modal-btns { display: flex; gap: 8px; }
+
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ AUTH GATE ══ -->
+<div id="auth-gate">
+  <div class="auth-logo">Admin</div>
+  <div class="auth-sub">Triple School Tracker</div>
+  <div class="auth-box">
+    <label class="auth-label">관리자 비밀번호</label>
+    <input type="password" class="auth-input" id="admin-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()" />
+    <div class="auth-err" id="auth-err"></div>
+    <button class="btn-enter" onclick="tryLogin()">Enter Admin</button>
+  </div>
+</div>
+
+<!-- ══ ADMIN APP ══ -->
+<div id="admin-app">
+
+  <!-- Banner -->
+  <div class="banner" id="top-banner">
+    <div class="banner-overlay">
+      <div class="banner-title">Triple School <span>Admin Console</span></div>
+    </div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <span style="font-family: var(--font-serif); font-size: 15px;">Triple School</span>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <div class="top-bar-right">
+      <button class="btn-sm" onclick="syncAll()">동기화</button>
+      <button class="btn-sm danger" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section">Overview</div>
+      <button class="sidebar-item active" data-panel="dashboard" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        대시보드
+      </button>
+
+      <div class="sidebar-section">콘텐츠</div>
+      <button class="sidebar-item" data-panel="books" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+        책 목록 관리
+      </button>
+      <button class="sidebar-item" data-panel="notice" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        공지사항
+      </button>
+
+      <div class="sidebar-section">유저</div>
+      <button class="sidebar-item" data-panel="users" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        유저 관리
+      </button>
+      <button class="sidebar-item" data-panel="groups" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        그룹 관리
+      </button>
+
+      <div class="sidebar-section">꾸미기</div>
+      <button class="sidebar-item" data-panel="theme" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>
+        테마 & 이미지
+      </button>
+    </div>
+
+    <!-- Content panels -->
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="panel-title">대시보드</div>
+        <div class="panel-sub">Overview of Triple School reading tracker</div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-num" id="d-users">—</div><div class="stat-label">유저</div></div>
+          <div class="stat-box"><div class="stat-num" id="d-books">—</div><div class="stat-label">도서</div></div>
+          <div class="stat-box"><div class="stat-num" id="d-records">—</div><div class="stat-label">완독 기록</div></div>
+          <div class="stat-box"><div class="stat-num" id="d-groups">—</div><div class="stat-label">그룹</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">최근 완독 기록</div>
+          <table class="data-table" id="recent-table">
+            <thead><tr><th>유저</th><th>책</th><th>그룹</th><th>날짜</th></tr></thead>
+            <tbody id="recent-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── BOOKS ── -->
+      <div class="panel" id="panel-books">
+        <div class="panel-title">책 목록 관리</div>
+        <div class="panel-sub">Add, edit, or import books by week</div>
+
+        <div class="card">
+          <div class="card-title">CSV 일괄 추가</div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">형식: <code style="font-family:var(--font-mono); background:var(--cream); padding:2px 6px; border-radius:2px;">주차,한국어제목,영어제목,저자,설명</code></p>
+          <textarea class="csv-area" id="csv-input" placeholder="1,자기 자신을 알라,Know Thyself,소크라테스,철학의 시작&#10;2,기도란 무엇인가,What is Prayer,칼 바르트,기도에 대한 깊은 통찰"></textarea>
+          <button class="btn-primary" onclick="importCSV()">CSV 가져오기</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">책 직접 추가</div>
+          <div class="form-row">
+            <div class="form-group" style="min-width:60px; max-width:80px;">
+              <label>주차</label>
+              <input type="number" id="b-week" min="1" value="1" />
+            </div>
+            <div class="form-group">
+              <label>한국어 제목</label>
+              <input type="text" id="b-titleko" placeholder="자기 자신을 알라" />
+            </div>
+            <div class="form-group">
+              <label>English Title</label>
+              <input type="text" id="b-title" placeholder="Know Thyself" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>저자</label>
+              <input type="text" id="b-author" placeholder="" />
+            </div>
+            <div class="form-group">
+              <label>설명</label>
+              <input type="text" id="b-desc" placeholder="" />
+            </div>
+          </div>
+          <button class="btn-primary" onclick="addBook()">추가</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">전체 도서 목록 (<span id="book-count">0</span>권)</div>
+          <table class="data-table">
+            <thead><tr><th>주차</th><th>제목</th><th>저자</th><th></th></tr></thead>
+            <tbody id="book-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── NOTICE ── -->
+      <div class="panel" id="panel-notice">
+        <div class="panel-title">공지사항</div>
+        <div class="panel-sub">Announcements shown to all users</div>
+        <div class="card">
+          <div class="card-title">새 공지 작성</div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>제목</label>
+            <input type="text" id="n-title" placeholder="이번 주 도서 안내" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>내용</label>
+            <textarea id="n-body" placeholder="이번 주는 ...을 읽습니다."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>대상 그룹</label>
+              <select id="n-group">
+                <option value="">전체</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="postNotice()">공지 등록</button>
+        </div>
+        <div id="notice-list"></div>
+      </div>
+
+      <!-- ── USERS ── -->
+      <div class="panel" id="panel-users">
+        <div class="panel-title">유저 관리</div>
+        <div class="panel-sub">Change roles or remove users</div>
+        <div class="card" style="padding:12px 16px;">
+          <div style="display:flex; gap:8px; margin-bottom:0;">
+            <select id="user-filter-group" onchange="renderUsers()" style="max-width:180px;">
+              <option value="">모든 그룹</option>
+            </select>
+            <select id="user-filter-role" onchange="renderUsers()" style="max-width:140px;">
+              <option value="">모든 역할</option>
+              <option>student</option>
+              <option>leader</option>
+              <option>admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead><tr><th>이름</th><th>그룹</th><th>역할</th><th>완독</th><th></th></tr></thead>
+            <tbody id="user-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── GROUPS ── -->
+      <div class="panel" id="panel-groups">
+        <div class="panel-title">그룹 관리</div>
+        <div class="panel-sub">Add or remove community groups</div>
+        <div class="card">
+          <div class="card-title">현재 그룹</div>
+          <div class="group-list" id="group-list"></div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="new-group-input" placeholder="새 그룹 이름" style="max-width:220px;" onkeydown="if(event.key==='Enter')addGroup()" />
+            <button class="btn-primary" onclick="addGroup()">추가</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">그룹별 현황</div>
+          <table class="data-table">
+            <thead><tr><th>그룹</th><th>유저 수</th><th>완독 합계</th></tr></thead>
+            <tbody id="group-stat-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── THEME ── -->
+      <div class="panel" id="panel-theme">
+        <div class="panel-title">테마 & 이미지</div>
+        <div class="panel-sub">Customize the look of Triple School</div>
+
+        <div class="card">
+          <div class="card-title">컬러 테마</div>
+          <div class="theme-grid" id="theme-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">배너 이미지</div>
+          <img id="banner-preview" class="banner-preview" alt="banner preview" />
+          <div class="upload-zone" onclick="document.getElementById('banner-file').click()">
+            <div class="upload-zone-icon">🖼️</div>
+            <div class="upload-zone-text">클릭하여 이미지 업로드<br><span style="font-size:10px; opacity:0.6;">JPG, PNG, WEBP — 로컬 저장 (base64)</span></div>
+          </div>
+          <input type="file" id="banner-file" accept="image/*" style="display:none" onchange="uploadBanner(this)" />
+          <button class="btn-sm danger" onclick="removeBanner()" style="margin-top:4px;">배너 제거</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">앱 이름 커스텀</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>앱 이름</label>
+              <input type="text" id="custom-appname" placeholder="Triple School" />
+            </div>
+            <div class="form-group">
+              <label>서브타이틀</label>
+              <input type="text" id="custom-subtitle" placeholder="독서 기록" />
+            </div>
+          </div>
+          <button class="btn-primary" onclick="saveAppName()">저장</button>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /layout -->
+</div><!-- /admin-app -->
+
+<!-- Confirm modal -->
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal-box">
+    <div class="modal-q" id="confirm-q">삭제하시겠어요?</div>
+    <div class="modal-desc" id="confirm-desc">이 작업은 되돌릴 수 없어요.</div>
+    <div class="modal-btns">
+      <button class="btn-sm" onclick="closeConfirm()">취소</button>
+      <button class="btn-danger" id="confirm-ok">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════
+const ADMIN_PASSWORD = 'tripleschool2025'; // ← 변경하세요
+const LS_KEY  = 'triple_v1';
+const ADM_KEY = 'triple_admin';
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let S = {
+  users:   [],
+  books:   [],
+  records: [],
+  notices: [],
+  groups:  ['Blinn Intogen','Renewgen','Teachers','Other'],
+  theme:   'default',
+  banner:  null,
+  appName: 'Triple School',
+  appSub:  '독서 기록',
+};
+
+function loadAll() {
+  try {
+    const main = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    if (main.users)   S.users   = main.users;
+    if (main.books)   S.books   = main.books;
+    if (main.records) S.records = main.records;
+
+    const adm = JSON.parse(localStorage.getItem(ADM_KEY) || '{}');
+    if (adm.notices) S.notices = adm.notices;
+    if (adm.groups)  S.groups  = adm.groups;
+    if (adm.theme)   S.theme   = adm.theme;
+    if (adm.banner)  S.banner  = adm.banner;
+    if (adm.appName) S.appName = adm.appName;
+    if (adm.appSub)  S.appSub  = adm.appSub;
+  } catch(e) {}
+}
+
+function saveAdm() {
+  localStorage.setItem(ADM_KEY, JSON.stringify({
+    notices: S.notices, groups: S.groups,
+    theme: S.theme, banner: S.banner,
+    appName: S.appName, appSub: S.appSub,
+  }));
+}
+function saveMain() {
+  const main = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+  localStorage.setItem(LS_KEY, JSON.stringify({ ...main, users: S.users, books: S.books, records: S.records }));
+}
+
+// ════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════
+function tryLogin() {
+  const pw = document.getElementById('admin-pw').value;
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('admin-app').style.display = 'flex';
+    document.getElementById('admin-app').style.flexDirection = 'column';
+    initApp();
+  } else {
+    document.getElementById('auth-err').textContent = '비밀번호가 틀렸어요.';
+    document.getElementById('admin-pw').value = '';
+  }
+}
+document.getElementById('admin-pw').addEventListener('keydown', e => {
+  if (e.key === 'Enter') tryLogin();
+});
+function doLogout() { location.reload(); }
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+function initApp() {
+  loadAll();
+  applyTheme(S.theme);
+  applyBanner(S.banner);
+  applyAppName();
+  renderDashboard();
+  renderThemeGrid();
+  populateGroupSelects();
+  renderGroupList();
+  renderGroupStats();
+  renderUsers();
+  renderBooks();
+  renderNotices();
+  if (window.__firebaseReady) syncAll();
+}
+
+// ════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════
+function nav(el) {
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  const p = el.dataset.panel;
+  document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+  document.getElementById('panel-' + p).classList.add('active');
+}
+
+// ════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════
+function renderDashboard() {
+  document.getElementById('d-users').textContent   = S.users.length;
+  document.getElementById('d-books').textContent   = S.books.length;
+  document.getElementById('d-records').textContent = S.records.length;
+  document.getElementById('d-groups').textContent  = S.groups.length;
+
+  const recent = [...S.records].reverse().slice(0, 10);
+  const tbody = document.getElementById('recent-body');
+  tbody.innerHTML = recent.map(r => {
+    const u = S.users.find(u => u.id === r.userId);
+    const b = S.books.find(b => b.id === r.bookId);
+    return `<tr>
+      <td>${esc(u?.name || '?')}</td>
+      <td>${esc(b?.titleKo || b?.title || '?')}</td>
+      <td>${esc(u?.group || '?')}</td>
+      <td style="font-family:var(--font-mono); font-size:11px;">${r.date || ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="color:var(--muted); text-align:center; padding:20px;">기록 없음</td></tr>';
+}
+
+// ════════════════════════════════════════════
+// BOOKS
+// ════════════════════════════════════════════
+function renderBooks() {
+  const sorted = [...S.books].sort((a,b) => (a.week||0)-(b.week||0));
+  document.getElementById('book-count').textContent = sorted.length;
+  document.getElementById('book-tbody').innerHTML = sorted.map(b => `
+    <tr>
+      <td style="font-family:var(--font-mono); color:var(--accent);">${b.week}주</td>
+      <td>${esc(b.titleKo || b.title)}<br><span style="font-size:11px; color:var(--muted);">${esc(b.title !== b.titleKo ? b.title : '')}</span></td>
+      <td style="font-size:12px; color:var(--muted);">${esc(b.author||'')}</td>
+      <td><div class="actions">
+        <button class="btn-sm danger" onclick="confirmDelete('book','${b.id}','${esc(b.titleKo||b.title)}')">삭제</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="4" style="color:var(--muted); text-align:center; padding:20px;">도서 없음</td></tr>';
+}
+
+function addBook() {
+  const week   = parseInt(document.getElementById('b-week').value) || 1;
+  const titleko = document.getElementById('b-titleko').value.trim();
+  const title  = document.getElementById('b-title').value.trim();
+  const author = document.getElementById('b-author').value.trim();
+  const desc   = document.getElementById('b-desc').value.trim();
+  if (!titleko && !title) { toast('제목을 입력하세요'); return; }
+  const book = { id: uid(), week, titleKo: titleko, title: title||titleko, author, desc };
+  S.books.push(book);
+  saveMain();
+  if (window.__firebaseReady) fsSet('books', book.id, book);
+  renderBooks(); renderDashboard();
+  toast('추가됐어 ✓');
+  ['b-titleko','b-title','b-author','b-desc'].forEach(id => document.getElementById(id).value='');
+}
+
+function importCSV() {
+  const raw = document.getElementById('csv-input').value.trim();
+  if (!raw) { toast('CSV를 입력하세요'); return; }
+  let count = 0;
+  raw.split('\n').forEach(line => {
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length < 2) return;
+    const [weekStr, titleKo, title, author, desc] = parts;
+    const week = parseInt(weekStr);
+    if (!week || !titleKo) return;
+    const book = { id: uid(), week, titleKo, title: title||titleKo, author: author||'', desc: desc||'' };
+    S.books.push(book);
+    if (window.__firebaseReady) fsSet('books', book.id, book);
+    count++;
+  });
+  saveMain(); renderBooks(); renderDashboard();
+  toast(`${count}권 추가됐어 ✓`);
+  document.getElementById('csv-input').value = '';
+}
+
+function deleteBook(id) {
+  S.books = S.books.filter(b => b.id !== id);
+  S.records = S.records.filter(r => r.bookId !== id);
+  saveMain();
+  if (window.__firebaseReady) { fsDel('books', id); }
+  renderBooks(); renderDashboard(); toast('삭제됨');
+}
+
+// ════════════════════════════════════════════
+// NOTICES
+// ════════════════════════════════════════════
+function renderNotices() {
+  const container = document.getElementById('notice-list');
+  container.innerHTML = S.notices.length
+    ? S.notices.map((n,i) => `
+      <div class="notice-card">
+        <div>
+          <div style="font-weight:600; margin-bottom:4px;">${esc(n.title)}</div>
+          <div class="notice-text">${esc(n.body)}</div>
+          <div class="notice-date">${n.group ? '대상: '+esc(n.group) : '전체'} · ${n.date}</div>
+        </div>
+        <button class="btn-sm danger" onclick="deleteNotice(${i})">삭제</button>
+      </div>`).join('')
+    : '<div style="color:var(--muted); font-size:13px; padding:16px 0;">공지사항 없음</div>';
+}
+
+function postNotice() {
+  const title = document.getElementById('n-title').value.trim();
+  const body  = document.getElementById('n-body').value.trim();
+  const group = document.getElementById('n-group').value;
+  if (!title || !body) { toast('제목과 내용을 입력하세요'); return; }
+  S.notices.unshift({ title, body, group, date: today() });
+  saveAdm();
+  renderNotices(); toast('공지 등록됨 ✓');
+  document.getElementById('n-title').value = '';
+  document.getElementById('n-body').value  = '';
+}
+
+function deleteNotice(i) {
+  S.notices.splice(i, 1);
+  saveAdm(); renderNotices(); toast('삭제됨');
+}
+
+// ════════════════════════════════════════════
+// USERS
+// ════════════════════════════════════════════
+function renderUsers() {
+  const fg = document.getElementById('user-filter-group').value;
+  const fr = document.getElementById('user-filter-role').value;
+  let users = [...S.users];
+  if (fg) users = users.filter(u => u.group === fg);
+  if (fr) users = users.filter(u => u.role === fr);
+
+  document.getElementById('user-tbody').innerHTML = users.map(u => {
+    const recCount = S.records.filter(r => r.userId === u.id).length;
+    const roleTag = u.role === 'admin' ? 'tag-admin' : u.role === 'leader' ? 'tag-leader' : 'tag-student';
+    return `<tr>
+      <td style="font-weight:500;">${esc(u.name)}</td>
+      <td style="font-size:12px; color:var(--muted);">${esc(u.group||'')}</td>
+      <td>
+        <select onchange="changeRole('${u.id}', this.value)" style="width:auto; padding:4px 8px; font-size:12px;">
+          <option ${u.role==='student'?'selected':''}>student</option>
+          <option ${u.role==='leader'?'selected':''}>leader</option>
+          <option ${u.role==='admin'?'selected':''}>admin</option>
+        </select>
+      </td>
+      <td style="font-family:var(--font-mono); color:var(--accent);">${recCount}</td>
+      <td><button class="btn-sm danger" onclick="confirmDelete('user','${u.id}','${esc(u.name)}')">삭제</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--muted); text-align:center; padding:20px;">유저 없음</td></tr>';
+}
+
+function changeRole(userId, newRole) {
+  const u = S.users.find(u => u.id === userId);
+  if (!u) return;
+  u.role = newRole;
+  saveMain();
+  if (window.__firebaseReady) fsSet('users', userId, u);
+  toast(`${u.name} → ${newRole}`);
+}
+
+function deleteUser(id) {
+  S.users = S.users.filter(u => u.id !== id);
+  S.records = S.records.filter(r => r.userId !== id);
+  saveMain();
+  if (window.__firebaseReady) fsDel('users', id);
+  renderUsers(); renderDashboard(); toast('유저 삭제됨');
+}
+
+// ════════════════════════════════════════════
+// GROUPS
+// ════════════════════════════════════════════
+function renderGroupList() {
+  document.getElementById('group-list').innerHTML = S.groups.map(g => `
+    <div class="group-chip">
+      ${esc(g)}
+      <button class="group-chip-del" onclick="deleteGroup('${esc(g)}')">×</button>
+    </div>`).join('');
+}
+
+function renderGroupStats() {
+  document.getElementById('group-stat-tbody').innerHTML = S.groups.map(g => {
+    const members = S.users.filter(u => u.group === g).length;
+    const recs    = S.records.filter(r => S.users.find(u => u.id===r.userId && u.group===g)).length;
+    return `<tr>
+      <td style="font-weight:500;">${esc(g)}</td>
+      <td style="font-family:var(--font-mono);">${members}</td>
+      <td style="font-family:var(--font-mono); color:var(--accent);">${recs}</td>
+    </tr>`;
+  }).join('');
+}
+
+function populateGroupSelects() {
+  const selects = ['n-group','user-filter-group','filter-group'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const base = id === 'n-group' ? '<option value="">전체</option>' : '<option value="">모든 그룹</option>';
+    el.innerHTML = base + S.groups.map(g => `<option>${esc(g)}</option>`).join('');
+  });
+}
+
+function addGroup() {
+  const name = document.getElementById('new-group-input').value.trim();
+  if (!name || S.groups.includes(name)) { toast('이미 있거나 빈 이름'); return; }
+  S.groups.push(name);
+  saveAdm(); populateGroupSelects(); renderGroupList(); renderGroupStats(); toast('그룹 추가됨 ✓');
+  document.getElementById('new-group-input').value = '';
+}
+
+function deleteGroup(name) {
+  S.groups = S.groups.filter(g => g !== name);
+  saveAdm(); populateGroupSelects(); renderGroupList(); renderGroupStats(); toast('그룹 삭제됨');
+}
+
+// ════════════════════════════════════════════
+// THEME
+// ════════════════════════════════════════════
+const THEMES = [
+  { id:'default', label:'오리지널', bg:'#f5f2eb', accent:'#6b7c4e' },
+  { id:'dark',    label:'다크',     bg:'#141412', accent:'#a8b88a' },
+  { id:'navy',    label:'네이비',   bg:'#0d1117', accent:'#58a6ff' },
+  { id:'rose',    label:'로즈',     bg:'#fdf0f2', accent:'#c0576e' },
+  { id:'forest',  label:'포레스트', bg:'#f0f4ec', accent:'#3d6b32' },
+  { id:'slate',   label:'슬레이트', bg:'#0f172a', accent:'#94a3b8' },
+];
+
+function renderThemeGrid() {
+  document.getElementById('theme-grid').innerHTML = THEMES.map(t => `
+    <div class="theme-swatch-wrap">
+      <div class="theme-swatch ${S.theme===t.id?'active':''}"
+        data-id="${t.id}"
+        style="background: linear-gradient(135deg, ${t.bg} 50%, ${t.accent} 50%);"
+        onclick="selectTheme('${t.id}')">
+      </div>
+      <div class="theme-swatch-label">${t.label}</div>
+    </div>`).join('');
+}
+
+function selectTheme(id) {
+  S.theme = id;
+  applyTheme(id);
+  saveAdm();
+  renderThemeGrid();
+  toast('테마 변경됨 ✓');
+}
+
+function applyTheme(id) {
+  document.documentElement.setAttribute('data-theme', id === 'default' ? '' : id);
+}
+
+// ── BANNER ──
+function uploadBanner(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    S.banner = e.target.result;
+    saveAdm(); applyBanner(S.banner); toast('배너 적용됨 ✓');
+  };
+  reader.readAsDataURL(file);
+}
+function applyBanner(dataUrl) {
+  const banner = document.getElementById('top-banner');
+  const preview = document.getElementById('banner-preview');
+  if (dataUrl) {
+    banner.style.backgroundImage = `url(${dataUrl})`;
+    banner.style.backgroundSize  = 'cover';
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+  } else {
+    banner.style.backgroundImage = '';
+    preview.style.display = 'none';
+  }
+}
+function removeBanner() {
+  S.banner = null;
+  saveAdm(); applyBanner(null); toast('배너 제거됨');
+  document.getElementById('banner-file').value = '';
+}
+
+// ── APP NAME ──
+function saveAppName() {
+  S.appName = document.getElementById('custom-appname').value.trim() || 'Triple School';
+  S.appSub  = document.getElementById('custom-subtitle').value.trim() || '독서 기록';
+  saveAdm(); applyAppName(); toast('저장됨 ✓');
+}
+function applyAppName() {
+  document.querySelector('.banner-title').innerHTML =
+    `${esc(S.appName)} <span>${esc(S.appSub)}</span>`;
+  document.getElementById('custom-appname').value = S.appName;
+  document.getElementById('custom-subtitle').value = S.appSub;
+}
+
+// ════════════════════════════════════════════
+// CONFIRM MODAL
+// ════════════════════════════════════════════
+let _confirmCb = null;
+function confirmDelete(type, id, name) {
+  const labels = { book:'도서', user:'유저' };
+  document.getElementById('confirm-q').textContent = `${labels[type]||type}을 삭제할까요?`;
+  document.getElementById('confirm-desc').textContent = `"${name}" — 이 작업은 되돌릴 수 없어요.`;
+  document.getElementById('confirm-modal').classList.add('open');
+  _confirmCb = () => {
+    if (type==='book') deleteBook(id);
+    if (type==='user') deleteUser(id);
+    closeConfirm();
+  };
+  document.getElementById('confirm-ok').onclick = _confirmCb;
+}
+function closeConfirm() {
+  document.getElementById('confirm-modal').classList.remove('open');
+  _confirmCb = null;
+}
+
+// ════════════════════════════════════════════
+// FIREBASE SYNC
+// ════════════════════════════════════════════
+async function syncAll() {
+  if (!window.__firebaseReady) { toast('Firebase 미연결'); return; }
+  try {
+    const { collection: col, getDocs } = window.__fs;
+    const [usersSnap, booksSnap, recsSnap] = await Promise.all([
+      getDocs(col(window.__db,'users')),
+      getDocs(col(window.__db,'books')),
+      getDocs(col(window.__db,'read_records')),
+    ]);
+    usersSnap.forEach(d => { if (!S.users.find(u=>u.id===d.id)) S.users.push({id:d.id,...d.data()}); });
+    booksSnap.forEach(d => { if (!S.books.find(b=>b.id===d.id)) S.books.push({id:d.id,...d.data()}); });
+    recsSnap.forEach(d  => {
+      const data = d.data();
+      const key  = r => r.userId+'_'+r.bookId;
+      if (!S.records.find(r=>key(r)===key(data))) S.records.push(data);
+    });
+    saveMain();
+    renderDashboard(); renderBooks(); renderUsers(); renderGroupStats();
+    toast('동기화 완료 ✓');
+  } catch(e) { toast('동기화 실패: '+e.message); }
+}
+
+async function fsSet(coll, id, data) {
+  const { doc, setDoc } = window.__fs;
+  await setDoc(doc(window.__db, coll, id), data);
+}
+async function fsDel(coll, id) {
+  const { doc, deleteDoc } = window.__fs;
+  await deleteDoc(doc(window.__db, coll, id));
+}
+
+// ════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
