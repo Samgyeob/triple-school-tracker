@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMUSA Score Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a23;
+    --surface2: #1e2330;
+    --border: #2a3044;
+    --accent: #4f8ef7;
+    --accent2: #f7c04f;
+    --danger: #f75f5f;
+    --success: #34d399;
+    --text: #e8eaf0;
+    --text2: #8890a8;
+    --victory: #4f8ef7;
+    --him: #a78bfa;
+    --salvation: #34d399;
+    --radius: 12px;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* LOADING */
+  #loading-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 300; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+  #loading-overlay .logo { font-family: var(--font-display); font-size: 48px; letter-spacing: 4px; }
+  #loading-overlay p { color: var(--text2); font-size: 13px; }
+
+  /* AUTH */
+  #auth-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; background: radial-gradient(ellipse at 50% 0%, #1a2540 0%, var(--bg) 70%); }
+  .auth-logo { font-family: var(--font-display); font-size: 64px; letter-spacing: 6px; line-height: 1; margin-bottom: 8px; }
+  .auth-sub { color: var(--text2); font-size: 13px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 48px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; width: 100%; max-width: 380px; }
+  .auth-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 24px; }
+  .btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 13px 20px; background: #fff; color: #333; border: none; border-radius: 8px; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 12px; }
+  .btn-google:hover { background: #f5f5f5; box-shadow: 0 2px 12px rgba(79,142,247,0.2); }
+  .divider { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: var(--text2); font-size: 12px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* PENDING */
+  #pending-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .pending-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px 32px; max-width: 400px; width: 100%; text-align: center; }
+  .pending-icon { font-size: 56px; margin-bottom: 16px; }
+  .pending-card h2 { font-family: var(--font-display); font-size: 28px; letter-spacing: 1px; margin-bottom: 10px; }
+  .pending-card p { color: var(--text2); font-size: 14px; line-height: 1.6; }
+  .pending-email { color: var(--accent); font-weight: 600; font-size: 13px; margin: 8px 0; }
+
+  /* FORM ELEMENTS */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+  input, select, textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-family: var(--font-body); font-size: 14px; outline: none; transition: border-color 0.2s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 60px; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-primary:hover { background: #6aa0f9; }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--text2); color: var(--text); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 6px; }
+  .error-msg { color: var(--danger); font-size: 13px; margin-top: 12px; text-align: center; }
+
+  /* APP LAYOUT */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 100; }
+  .topbar-logo { font-family: var(--font-display); font-size: 26px; letter-spacing: 3px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .season-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12px; color: var(--text2); }
+  .season-badge span { color: var(--accent2); font-weight: 600; }
+  .user-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); cursor: pointer; }
+  .user-avatar-placeholder { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; }
+  .role-pill { font-size: 10px; padding: 3px 8px; border-radius: 20px; font-weight: 700; letter-spacing: .5px; }
+  .role-admin { background: rgba(79,142,247,0.2); color: var(--accent); }
+  .role-leader { background: rgba(247,192,79,0.2); color: var(--accent2); }
+  .role-student { background: rgba(52,211,153,0.2); color: var(--success); }
+  .logout-btn { background: none; border: 1px solid var(--border); color: var(--text2); padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: var(--font-body); transition: all 0.2s; }
+  .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+  .content { flex: 1; padding: 20px; max-width: 820px; margin: 0 auto; width: 100%; padding-bottom: 80px; }
+
+  /* BOTTOM NAV */
+  .bottom-nav { display: flex; background: var(--surface); border-top: 1px solid var(--border); position: fixed; bottom: 0; left: 0; right: 0; z-index: 99; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 8px; cursor: pointer; border: none; background: none; color: var(--text2); font-family: var(--font-body); font-size: 10px; gap: 3px; transition: color 0.2s; }
+  .nav-item.active { color: var(--accent); }
+  .nav-item.hidden { display: none; }
+  .nav-item svg { width: 20px; height: 20px; }
+
+  /* SCREENS */
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .section-title { font-family: var(--font-display); font-size: 30px; letter-spacing: 2px; margin-bottom: 16px; color: var(--text); }
+
+  /* COUNTDOWN */
+  .countdown-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .countdown-bar .season-name { font-family: var(--font-display); font-size: 20px; letter-spacing: 1px; color: var(--accent2); }
+  .countdown-nums { display: flex; gap: 12px; }
+  .countdown-unit { text-align: center; }
+  .countdown-unit .num { font-family: var(--font-mono); font-size: 28px; font-weight: 500; color: var(--text); line-height: 1; }
+  .countdown-unit .lbl { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+  .progress-bar-wrap { width: 100%; background: var(--surface2); border-radius: 4px; height: 4px; margin-top: 8px; }
+  .progress-bar-fill { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s; }
+
+  /* TEAM CARDS */
+  .team-cards { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+  .team-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; position: relative; overflow: hidden; }
+  .team-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .team-card.victory::before { background: var(--victory); }
+  .team-card.him::before { background: var(--him); }
+  .team-card.salvation::before { background: var(--salvation); }
+  .team-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+  .team-info .team-name { font-family: var(--font-display); font-size: 20px; letter-spacing: 1px; }
+  .team-card.victory .team-name { color: var(--victory); }
+  .team-card.him .team-name { color: var(--him); }
+  .team-card.salvation .team-name { color: var(--salvation); }
+  .team-motto { font-size: 11px; color: var(--text2); margin-top: 2px; font-style: italic; }
+  .team-leader { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .team-score { font-family: var(--font-mono); font-size: 26px; font-weight: 500; color: var(--text); }
+  .member-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: var(--surface2); border-radius: 8px; margin-bottom: 5px; }
+  .member-name { font-size: 13px; color: var(--text); }
+  .member-score { font-family: var(--font-mono); font-size: 13px; color: var(--text2); }
+
+  /* INDIVIDUAL BOARD */
+  .rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 10px; font-weight: 700; margin-right: 8px; background: var(--border); color: var(--text2); }
+  .rank-badge.gold { background: #f7c04f22; color: var(--accent2); }
+  .rank-badge.silver { background: #c0c0c022; color: #c0c0c0; }
+  .rank-badge.bronze { background: #cd7f3222; color: #cd7f32; }
+
+  /* ADD SCORE */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+  .form-card h3 { font-size: 14px; font-weight: 600; color: var(--text2); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+  .target-toggle { display: flex; gap: 8px; margin-bottom: 4px; }
+  .toggle-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .toggle-btn.active { border-color: var(--accent); color: var(--accent); background: #4f8ef711; }
+  .member-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 7px; margin-top: 8px; }
+  .member-check { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+  .member-check input { width: auto; }
+  .member-check:has(input:checked) { border-color: var(--accent); background: #4f8ef711; color: var(--accent); }
+
+  /* POINT STANDARDS */
+  .standards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .std-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .std-card h4 { font-size: 13px; font-weight: 600; color: var(--accent2); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .std-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .std-item:last-child { border-bottom: none; }
+  .std-item .pts { font-family: var(--font-mono); color: var(--success); font-weight: 500; white-space: nowrap; margin-left: 8px; }
+  .std-item .pts.neg { color: var(--danger); }
+
+  /* HISTORY */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-bar select { flex: 1; min-width: 110px; }
+  .history-list { display: flex; flex-direction: column; gap: 7px; }
+  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 16px; display: flex; align-items: flex-start; gap: 12px; }
+  .history-points { font-family: var(--font-mono); font-size: 17px; font-weight: 500; min-width: 44px; text-align: right; padding-top: 2px; }
+  .history-points.positive { color: var(--success); }
+  .history-points.negative { color: var(--danger); }
+  .history-info { flex: 1; }
+  .history-target { font-size: 13px; font-weight: 600; color: var(--text); }
+  .history-meta { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .history-note { font-size: 11px; color: var(--text2); margin-top: 3px; font-style: italic; }
+  .history-actions { display: flex; gap: 4px; align-items: center; }
+  .icon-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px; color: var(--text2); transition: all 0.2s; display: flex; align-items: center; }
+  .icon-btn:hover { background: var(--surface2); color: var(--text); }
+  .icon-btn.delete:hover { color: var(--danger); }
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text2); }
+  .empty-state .big { font-family: var(--font-display); font-size: 48px; margin-bottom: 8px; color: var(--border); }
+
+  /* ADMIN SCREEN */
+  .admin-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .admin-section h3 { font-size: 14px; font-weight: 600; color: var(--text2); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .member-manage-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .member-manage-row input, .member-manage-row select { flex: 1; }
+
+  /* PENDING USERS */
+  .pending-user-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; }
+  .pending-user-info { flex: 1; min-width: 0; }
+  .pending-user-email { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pending-user-name { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .pending-user-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .approve-btn { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; }
+  .approve-leader { background: rgba(247,192,79,0.2); color: var(--accent2); }
+  .approve-student { background: rgba(52,211,153,0.2); color: var(--success); }
+  .approve-deny { background: rgba(247,95,95,0.2); color: var(--danger); }
+
+  /* USERS TABLE */
+  .users-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+  .users-table th { text-align: left; color: var(--text2); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .users-table td { padding: 10px; border-bottom: 1px solid var(--surface2); vertical-align: middle; }
+  .users-table select { padding: 5px 8px; font-size: 12px; }
+
+  /* POINT STANDARDS ADMIN */
+  .std-admin-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .std-admin-row input[type="text"] { flex: 3; }
+  .std-admin-row input[type="text"].pts-input { flex: 1; max-width: 80px; }
+  .std-admin-row input[type="checkbox"] { width: auto; flex: 0; }
+  .std-admin-category { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+  .std-admin-category-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .std-admin-category-header input { font-weight: 600; font-size: 13px; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: #00000099; z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 420px; }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+
+  /* TOAST */
+  .success-toast { position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%) translateY(20px); padding: 11px 22px; border-radius: 50px; font-size: 13px; font-weight: 600; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; border: 1px solid; }
+  .success-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* SPINNER */
+  .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid #ffffff44; border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 500px) {
+    .content { padding: 14px; }
+    .standards-grid { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .countdown-nums { gap: 8px; }
+    .countdown-unit .num { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="logo">IMUSA</div>
+  <p>Loading...</p>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-logo">IMUSA</div>
+  <div class="auth-sub">Team Building Tracker</div>
+  <div class="auth-card">
+    <h2>Sign In</h2>
+    <button class="btn-google" onclick="handleGoogleLogin()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+    <div class="divider">or</div>
+    <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="admin@imusa.org"></div>
+    <div class="field"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleEmailLogin()"></div>
+    <button class="btn btn-primary" onclick="handleEmailLogin()"><span id="login-btn-text">Sign In</span></button>
+    <div id="auth-error" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- PENDING SCREEN -->
+<div id="pending-screen">
+  <div class="pending-card">
+    <div class="pending-icon">⏳</div>
+    <h2>Awaiting Approval</h2>
+    <p class="pending-email" id="pending-email"></p>
+    <p>Your account is pending admin approval. Tr. Anna will grant you access shortly.</p>
+    <br>
+    <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-logo">IMUSA</span>
+    <div class="topbar-right">
+      <div class="season-badge" id="topbar-season">Season <span>—</span></div>
+      <span class="role-pill" id="role-pill"></span>
+      <div id="user-avatar-wrap"></div>
+      <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- DASHBOARD -->
+    <div class="screen active" id="screen-dashboard">
+      <div id="countdown-wrap"></div>
+      <div class="section-title">TEAMS</div>
+      <div class="team-cards" id="team-cards"></div>
+      <div class="section-title">INDIVIDUALS</div>
+      <div id="individual-board"></div>
+    </div>
+
+    <!-- ADD SCORE -->
+    <div class="screen" id="screen-add">
+      <div class="section-title">ADD SCORE</div>
+      <div class="form-card">
+        <div class="field"><label>Date</label><input type="date" id="score-date"></div>
+        <div class="field">
+          <label>Category</label>
+          <select id="score-category"><option value="">-- Select category --</option></select>
+        </div>
+        <div class="field">
+          <label>Target Type</label>
+          <div class="target-toggle">
+            <button class="toggle-btn active" id="toggle-individual" onclick="setTargetType('individual')">Individual(s)</button>
+            <button class="toggle-btn" id="toggle-team" onclick="setTargetType('team')">Entire Team</button>
+          </div>
+        </div>
+        <div id="individual-select" class="field">
+          <label>Select Members</label>
+          <div class="member-checkboxes" id="member-checkboxes"></div>
+        </div>
+        <div id="team-select" class="field" style="display:none;">
+          <label>Select Team</label>
+          <select id="score-team-sel"><option value="">-- Select team --</option></select>
+        </div>
+        <div class="field"><label>Points</label><input type="number" id="score-points" placeholder="e.g. 5 or -1"></div>
+        <div class="field"><label>Note (optional)</label><textarea id="score-note" rows="2" placeholder="Additional info..."></textarea></div>
+        <button class="btn btn-primary" onclick="submitScore()"><span id="submit-btn-text">Submit Score</span></button>
+      </div>
+      <div class="section-title" style="font-size:22px;">POINT STANDARDS</div>
+      <div id="standards-display"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="screen" id="screen-history">
+      <div class="section-title">HISTORY</div>
+      <div class="filter-bar">
+        <select id="filter-member" onchange="renderHistory()"><option value="">All Members</option></select>
+        <select id="filter-category" onchange="renderHistory()"><option value="">All Categories</option></select>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="screen" id="screen-admin">
+      <div class="section-title">ADMIN</div>
+
+      <!-- PENDING APPROVALS -->
+      <div class="admin-section" id="pending-section">
+        <h3>⏳ Pending Approvals</h3>
+        <div id="pending-users-list"><p style="color:var(--text2);font-size:13px;">Loading...</p></div>
+      </div>
+
+      <!-- APPROVED USERS -->
+      <div class="admin-section">
+        <h3>👥 Approved Users</h3>
+        <div style="overflow-x:auto;">
+          <table class="users-table">
+            <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Linked Member</th><th></th></tr></thead>
+            <tbody id="approved-users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SEASON -->
+      <div class="admin-section">
+        <h3>📅 Season Settings</h3>
+        <div class="two-col">
+          <div class="field"><label>Season Name</label><input type="text" id="admin-season-name" placeholder="e.g. Season 1"></div>
+          <div class="field"><label>Start Date</label><input type="date" id="admin-season-start"></div>
+          <div class="field"><label>End Date</label><input type="date" id="admin-season-end"></div>
+        </div>
+        <div class="field"><label>Reward Description</label><textarea id="admin-season-reward" rows="2" placeholder="e.g. Top team gets a special dinner..."></textarea></div>
+        <button class="btn btn-primary" style="width:auto;" onclick="saveSeason()">Save Season</button>
+      </div>
+
+      <!-- TEAMS -->
+      <div class="admin-section">
+        <h3>🏆 Team Management</h3>
+        <div id="admin-teams-list"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addTeamRow()" style="margin-top:8px;">+ Add Team</button>
+        <button class="btn btn-primary" style="width:auto;margin-top:12px;" onclick="saveTeams()">Save Teams</button>
+      </div>
+
+      <!-- MEMBERS -->
+      <div class="admin-section">
+        <h3>🙋 Member Management</h3>
+        <div id="admin-members-list"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addMemberRow()" style="margin-top:8px;">+ Add Member</button>
+        <button class="btn btn-primary" style="width:auto;margin-top:12px;" onclick="saveMembers()">Save Members</button>
+      </div>
+
+      <!-- POINT STANDARDS ADMIN -->
+      <div class="admin-section">
+        <h3>📋 Point Standards</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Add, edit or remove scoring criteria. Changes reflect in the Add Score dropdown and reference table.</p>
+        <div id="admin-standards-list"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addStandardCategory()" style="margin-top:8px;">+ Add Category</button>
+        <button class="btn btn-primary" style="width:auto;margin-top:12px;" onclick="saveStandards()">Save Standards</button>
+      </div>
+
+      <!-- DANGER ZONE -->
+      <div class="admin-section" style="border-color:#f75f5f44;">
+        <h3 style="color:var(--danger);">⚠️ New Season</h3>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Archive current scores and reset for a new season. This does NOT delete history.</p>
+        <button class="btn btn-danger btn-sm" onclick="confirmNewSeason()">Archive & Start New Season</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item hidden" id="nav-add" onclick="switchTab('add')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Add Score
+    </button>
+    <button class="nav-item" id="nav-history" onclick="switchTab('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+      History
+    </button>
+    <button class="nav-item hidden" id="nav-admin" onclick="switchTab('admin')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Admin
+    </button>
+  </nav>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>Edit Entry</h3>
+    <input type="hidden" id="edit-entry-id">
+    <div class="field"><label>Points</label><input type="number" id="edit-points"></div>
+    <div class="field"><label>Note</label><textarea id="edit-note" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="success-toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, getDocs, deleteDoc, updateDoc, setDoc, getDoc,
+         query, orderBy, where, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBJRfw9Y7VJ_cdy3Z50RPqlL1BnNJ0bD1k",
+  authDomain: "imusa-team-building.firebaseapp.com",
+  projectId: "imusa-team-building",
+  storageBucket: "imusa-team-building.firebasestorage.app",
+  messagingSenderId: "663255077772",
+  appId: "1:663255077772:web:91c86f74c512fc53b37ca9",
+  measurementId: "G-Y37PQJ15Z4"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+const COMMUNITY = "IMUSA";
+const ADMIN_EMAIL = "05xunc@gmail.com"; // ← 너의 Gmail 여기에 설정
+const communityRef = doc(db, "communities", COMMUNITY);
+const configRef = doc(communityRef, "config", "main");
+const usersColRef = collection(db, "users");
+
+// ── DEFAULTS ──
+const DEFAULT_TEAMS = {
+  victory:   { name: "Team Victory",   leader: "Tr. Anna", motto: "", color: "victory",   order: 0 },
+  him:       { name: "Team HIM",       leader: "Tr. Ruti",  motto: "", color: "him",       order: 1 },
+  salvation: { name: "Team Salvation", leader: "Tr. John",  motto: "", color: "salvation", order: 2 }
+};
+const DEFAULT_MEMBERS = {
+  rael:      { name: "Rael",      teamId: "victory",   isLeader: false },
+  claire:    { name: "Claire",    teamId: "victory",   isLeader: false },
+  gabbi:     { name: "Gabbi",     teamId: "victory",   isLeader: false },
+  ethan:     { name: "Ethan",     teamId: "him",       isLeader: false },
+  calvin:    { name: "Calvin",    teamId: "him",       isLeader: false },
+  christine: { name: "Christine", teamId: "salvation", isLeader: false },
+  gordon:    { name: "Gordon",    teamId: "salvation", isLeader: false }
+};
+const DEFAULT_SEASON = {
+  name: "Season 1", start: "2026-05-18", end: "2026-06-17",
+  reward: "", currentSeasonId: "season1"
+};
+const DEFAULT_STANDARDS = [
+  { category: "⛪ Faith", isNegative: false, items: [
+    { label: "TS Notes (English 1 book)", pts: "50" },
+    { label: "TS Notes (Korean 1 book)", pts: "30" },
+    { label: "Bible Reading McCheyene (1-4장)", pts: "1–4" },
+    { label: "Torah Note (Well)", pts: "1–2" },
+    { label: "암송 (Memorize Bible)", pts: "1" },
+    { label: "설교/강의 노트 (Good)", pts: "1–2" }
+  ]},
+  { category: "🏠 Life", isNegative: false, items: [
+    { label: "플래너 / Binder (Well)", pts: "1–2" },
+    { label: "Duty (Cleaning/Dish Washer)", pts: "1" },
+    { label: "Help Teachers/Team Leaders", pts: "1" },
+    { label: "Good Attitude", pts: "1" }
+  ]},
+  { category: "🏫 Academy / School", isNegative: false, items: [
+    { label: "Quiz 100%", pts: "2" },
+    { label: "기도제목 나눔 (Prayer Request)", pts: "1" },
+    { label: "Inviting Friend for KFD", pts: "5" },
+    { label: "SAT", pts: "varies" },
+    { label: "트리플스쿨 (Triple School)", pts: "varies" }
+  ]},
+  { category: "✈️ Mission", isNegative: false, items: [
+    { label: "Shorts", pts: "3" },
+    { label: "Invite Friends (Worship/Life Group)", pts: "5" },
+    { label: "Blog (photo ≥10)", pts: "3" }
+  ]},
+  { category: "❌ Minus Points", isNegative: true, items: [
+    { label: "Use Korean", pts: "-1~-10" },
+    { label: "Fighting / Lying / Screaming", pts: "-1~-10" },
+    { label: "Running Inside", pts: "-1~-10" },
+    { label: "No arrange Shoes/Clothes outside", pts: "-1~-10" },
+    { label: "No time keeping for Class/Gathering", pts: "-1~-10" },
+    { label: "No arrange SDL/Laundry/Locker", pts: "-1~-10" },
+    { label: "Remaining Food (Lunch Box too)", pts: "-1~-10" },
+    { label: "No Triple School Note", pts: "-50" }
+  ]}
+];
+
+// ── STATE ──
+window._state = {
+  entries: [], teams: {...DEFAULT_TEAMS}, members: {...DEFAULT_MEMBERS},
+  season: {...DEFAULT_SEASON}, standards: JSON.parse(JSON.stringify(DEFAULT_STANDARDS)),
+  targetType: "individual", userRole: null, userId: null
+};
+window._currentSeasonEntriesRef = null;
+
+// ── EXPOSE GLOBALS ──
+const G = window;
+G.handleGoogleLogin = handleGoogleLogin;
+G.handleEmailLogin = handleEmailLogin;
+G.handleLogout = handleLogout;
+G.setTargetType = setTargetType;
+G.submitScore = submitScore;
+G.switchTab = switchTab;
+G.renderHistory = renderHistory;
+G.closeModal = closeModal;
+G.saveEdit = saveEdit;
+G.openEditModal = openEditModal;
+G.deleteEntry = deleteEntry;
+G.saveSeason = saveSeason;
+G.saveTeams = saveTeams;
+G.saveMembers = saveMembers;
+G.saveStandards = saveStandards;
+G.addTeamRow = addTeamRow;
+G.addMemberRow = addMemberRow;
+G.removeTeamRow = removeTeamRow;
+G.removeMemberRow = removeMemberRow;
+G.addStandardCategory = addStandardCategory;
+G.addStandardItem = addStandardItem;
+G.removeStandardItem = removeStandardItem;
+G.removeStandardCategory = removeStandardCategory;
+G.confirmNewSeason = confirmNewSeason;
+G.approveUser = approveUser;
+G.changeUserRole = changeUserRole;
+G.revokeUser = revokeUser;
+
+// ── AUTH ──
+async function handleGoogleLogin() {
+  const errEl = document.getElementById("auth-error");
+  errEl.textContent = "";
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e) { errEl.textContent = e.message; }
+}
+
+async function handleEmailLogin() {
+  const email = document.getElementById("auth-email").value.trim();
+  const pass = document.getElementById("auth-password").value;
+  const errEl = document.getElementById("auth-error");
+  const btnText = document.getElementById("login-btn-text");
+  errEl.textContent = "";
+  btnText.innerHTML = '<span class="spinner"></span>';
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    errEl.textContent = "Invalid email or password.";
+    btnText.textContent = "Sign In";
+  }
+}
+
+async function handleLogout() {
+  await signOut(auth);
+  location.reload();
+}
+
+onAuthStateChanged(auth, async user => {
+  document.getElementById("loading-overlay").style.display = "none";
+  if (!user) {
+    document.getElementById("auth-screen").style.display = "flex";
+    return;
+  }
+
+  // Check/create user record
+  const userDocRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userDocRef);
+
+  if (!userSnap.exists()) {
+    // New user — auto admin if matches ADMIN_EMAIL, else pending
+    const role = user.email === ADMIN_EMAIL ? "admin" : "pending";
+    await setDoc(userDocRef, {
+      email: user.email,
+      displayName: user.displayName || "",
+      photoURL: user.photoURL || "",
+      role: role,
+      linkedMemberId: "",
+      createdAt: serverTimestamp()
+    });
+    
+    if (role === "pending") {
+      showPendingScreen(user.email);
+      return;
+    }
+  } else {
+    const userData = userSnap.data();
+    if (userData.role === "pending" || userData.role === "denied") {
+      showPendingScreen(user.email, userData.role === "denied");
+      return;
+    }
+  }
+
+  // Approved (admin, leader, or student)
+  const userData = await getDoc(userDocRef).then(s => s.data());
+  window._state.userRole = userData.role;
+  window._state.userId = user.uid;
+  window._state.linkedMemberId = userData.linkedMemberId || "";
+
+  await loadConfig();
+  await loadEntries();
+  showApp(user, userData.role);
+});
+
+function showPendingScreen(email, denied=false) {
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("pending-screen").style.display = "flex";
+  const el = document.getElementById("pending-email");
+  el.textContent = email;
+  if (denied) {
+    document.querySelector(".pending-card p:not(.pending-email)").textContent = "Your access request was denied. Contact Tr. Anna for help.";
+  }
+}
+
+// ── CONFIG ──
+async function loadConfig() {
+  try {
+    const snap = await getDoc(configRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.teams)     window._state.teams     = data.teams;
+      if (data.members)   window._state.members   = data.members;
+      if (data.season)    window._state.season    = data.season;
+      if (data.standards) window._state.standards = data.standards;
+    } else {
+      await setDoc(configRef, {
+        teams: DEFAULT_TEAMS, members: DEFAULT_MEMBERS,
+        season: DEFAULT_SEASON, standards: DEFAULT_STANDARDS
+      });
+    }
+  } catch(e) { console.error("loadConfig", e); }
+}
+
+async function loadEntries() {
+  try {
+    const seasonId = window._state.season.currentSeasonId || "season1";
+    const ref = collection(communityRef, "seasons", seasonId, "scoreEntries");
+    const q = query(ref, orderBy("date", "desc"));
+    const snap = await getDocs(q);
+    window._state.entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    window._currentSeasonEntriesRef = ref;
+  } catch(e) {
+    window._currentSeasonEntriesRef = collection(communityRef, "scoreEntries");
+    try {
+      const snap = await getDocs(query(window._currentSeasonEntriesRef, orderBy("date", "desc")));
+      window._state.entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e2) { console.error(e2); }
+  }
+}
+
+function showApp(user, role) {
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+
+  // Avatar
+  const wrap = document.getElementById("user-avatar-wrap");
+  if (user.photoURL) {
+    wrap.innerHTML = `<img src="${user.photoURL}" class="user-avatar" title="${user.displayName||user.email}">`;
+  } else {
+    const initial = (user.displayName || user.email || "?")[0].toUpperCase();
+    wrap.innerHTML = `<div class="user-avatar-placeholder" title="${user.email}">${initial}</div>`;
+  }
+
+  // Role pill
+  const pill = document.getElementById("role-pill");
+  pill.textContent = role.toUpperCase();
+  pill.className = `role-pill role-${role}`;
+
+  // Nav visibility
+  if (role === "admin" || role === "leader") {
+    document.getElementById("nav-add").classList.remove("hidden");
+  }
+  if (role === "admin") {
+    document.getElementById("nav-admin").classList.remove("hidden");
+  }
+
+  buildCategorySelect();
+  buildMemberCheckboxes();
+  buildFilterOptions();
+  buildTeamSelect();
+  setDefaultDate();
+  updateTopbarSeason();
+  renderDashboard();
+  renderStandardsDisplay();
+
+  if (role === "admin") listenPendingUsers();
+}
+
+function setDefaultDate() {
+  document.getElementById("score-date").value = new Date().toISOString().split("T")[0];
+}
+
+function updateTopbarSeason() {
+  const s = window._state.season;
+  const el = document.getElementById("topbar-season");
+  if (el) el.innerHTML = `${s.name} <span id="topbar-dday"></span>`;
+  updateDday();
+}
+
+function updateDday() {
+  const s = window._state.season;
+  const el = document.getElementById("topbar-dday");
+  if (!el || !s.end) return;
+  const diff = Math.ceil((new Date(s.end) - new Date()) / 86400000);
+  el.textContent = diff > 0 ? `D-${diff}` : diff === 0 ? "D-DAY" : "Ended";
+  el.style.color = diff <= 7 ? "var(--danger)" : "var(--accent2)";
+}
+
+// ── CATEGORY SELECT (dynamic from standards) ──
+function buildCategorySelect() {
+  const sel = document.getElementById("score-category");
+  sel.innerHTML = '<option value="">-- Select category --</option>';
+  const standards = window._state.standards;
+  standards.forEach(cat => {
+    const grp = document.createElement("optgroup");
+    grp.label = cat.category;
+    cat.items.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item.label;
+      opt.textContent = `${item.label} (${item.pts}pts)`;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+}
+
+function buildMemberCheckboxes() {
+  const container = document.getElementById("member-checkboxes");
+  container.innerHTML = "";
+  Object.entries(window._state.members).filter(([,m]) => !m.isLeader).forEach(([id, m]) => {
+    const label = document.createElement("label");
+    label.className = "member-check";
+    label.innerHTML = `<input type="checkbox" value="${id}"> ${m.name}`;
+    container.appendChild(label);
+  });
+}
+
+function buildTeamSelect() {
+  const sel = document.getElementById("score-team-sel");
+  sel.innerHTML = '<option value="">-- Select team --</option>';
+  Object.entries(window._state.teams).forEach(([id, t]) => {
+    sel.innerHTML += `<option value="${id}">${t.name}</option>`;
+  });
+}
+
+function buildFilterOptions() {
+  const sel = document.getElementById("filter-member");
+  sel.innerHTML = '<option value="">All Members</option>';
+  Object.entries(window._state.members).forEach(([id, m]) => {
+    sel.innerHTML += `<option value="${id}">${m.name}</option>`;
+  });
+  const catSel = document.getElementById("filter-category");
+  catSel.innerHTML = '<option value="">All Categories</option>';
+  window._state.standards.forEach(cat => {
+    cat.items.forEach(item => {
+      catSel.innerHTML += `<option value="${item.label}">${item.label}</option>`;
+    });
+  });
+}
+
+// ── SCORES ──
+function calcScores() {
+  const memberScores = {};
+  const teamScores = {};
+  Object.keys(window._state.members).forEach(id => memberScores[id] = 0);
+  Object.keys(window._state.teams).forEach(id => teamScores[id] = 0);
+  window._state.entries.forEach(e => {
+    const pts = Number(e.points);
+    if (e.targetType === "individual") {
+      const ids = Array.isArray(e.targetId) ? e.targetId : [e.targetId];
+      ids.forEach(mid => {
+        if (memberScores[mid] !== undefined) {
+          memberScores[mid] += pts;
+          const teamId = window._state.members[mid]?.teamId;
+          if (teamId && teamScores[teamId] !== undefined) teamScores[teamId] += pts;
+        }
+      });
+    } else if (e.targetType === "team") {
+      if (teamScores[e.targetId] !== undefined) teamScores[e.targetId] += pts;
+    }
+  });
+  return { memberScores, teamScores };
+}
+
+// ── COUNTDOWN ──
+function renderCountdown() {
+  const s = window._state.season;
+  const wrap = document.getElementById("countdown-wrap");
+  if (!s.end) { wrap.innerHTML = ""; return; }
+  const now = new Date(), end = new Date(s.end), start = new Date(s.start);
+  const totalMs = end - start, elapsedMs = now - start;
+  const progress = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
+  const diff = end - now;
+  const days = Math.max(0, Math.floor(diff / 86400000));
+  const hours = Math.max(0, Math.floor((diff % 86400000) / 3600000));
+  const mins = Math.max(0, Math.floor((diff % 3600000) / 60000));
+  wrap.innerHTML = `
+    <div class="countdown-bar">
+      <div>
+        <div class="season-name">${s.name}</div>
+        ${s.reward ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;">🏆 ${s.reward}</div>` : ""}
+      </div>
+      <div class="countdown-nums">
+        <div class="countdown-unit"><div class="num">${days}</div><div class="lbl">Days</div></div>
+        <div class="countdown-unit"><div class="num">${hours}</div><div class="lbl">Hrs</div></div>
+        <div class="countdown-unit"><div class="num">${mins}</div><div class="lbl">Min</div></div>
+      </div>
+      <div class="progress-bar-wrap" style="flex-basis:100%;">
+        <div class="progress-bar-fill" style="width:${progress.toFixed(1)}%"></div>
+      </div>
+    </div>`;
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  renderCountdown();
+  const { memberScores, teamScores } = calcScores();
+  const { teams, members } = window._state;
+  const sortedTeams = Object.entries(teams).sort((a,b) => (teamScores[b[0]]||0) - (teamScores[a[0]]||0));
+  const medals = ["🥇","🥈","🥉"];
+  document.getElementById("team-cards").innerHTML = sortedTeams.map(([tid, t], rank) => {
+    const tMembers = Object.entries(members).filter(([,m]) => m.teamId === tid && !m.isLeader);
+    return `
+      <div class="team-card ${t.color || tid}">
+        <div class="team-header">
+          <div class="team-info">
+            <div class="team-name">${medals[rank]||""} ${t.name}</div>
+            ${t.leader ? `<div class="team-leader">Leader: ${t.leader}</div>` : ""}
+            ${t.motto ? `<div class="team-motto">"${t.motto}"</div>` : ""}
+          </div>
+          <span class="team-score">${teamScores[tid]||0}</span>
+        </div>
+        ${tMembers.map(([mid, m]) => `
+          <div class="member-row">
+            <span class="member-name">${m.name}</span>
+            <span class="member-score">${memberScores[mid]||0}</span>
+          </div>`).join("")}
+      </div>`;
+  }).join("");
+
+  const sortedMembers = Object.entries(members)
+    .filter(([,m]) => !m.isLeader)
+    .sort((a,b) => (memberScores[b[0]]||0) - (memberScores[a[0]]||0));
+  const rankClasses = ["gold","silver","bronze"];
+  document.getElementById("individual-board").innerHTML = sortedMembers.map(([mid, m], i) => `
+    <div class="member-row" style="margin-bottom:7px;">
+      <span style="display:flex;align-items:center;">
+        <span class="rank-badge ${rankClasses[i]||""}">${i+1}</span>
+        <span class="member-name">${m.name}</span>
+        <span style="font-size:11px;color:var(--text2);margin-left:6px;">${teams[m.teamId]?.name||""}</span>
+      </span>
+      <span class="member-score" style="font-size:17px;">${memberScores[mid]||0}</span>
+    </div>`).join("");
+}
+
+// ── POINT STANDARDS DISPLAY ──
+function renderStandardsDisplay() {
+  const standards = window._state.standards;
+  const el = document.getElementById("standards-display");
+  el.innerHTML = `<div class="standards-grid">` +
+    standards.map((cat, ci) => `
+      <div class="std-card${ci === standards.length-1 ? ' style="grid-column:1/-1;"' : ''}">
+        <h4>${cat.category}</h4>
+        ${cat.items.map(item => `
+          <div class="std-item">
+            <span>${item.label}</span>
+            <span class="pts${cat.isNegative?' neg':''}">${item.pts}</span>
+          </div>`).join("")}
+      </div>`).join("") + `</div>`;
+}
+
+// ── TARGET TYPE ──
+function setTargetType(type) {
+  window._state.targetType = type;
+  document.getElementById("toggle-individual").classList.toggle("active", type==="individual");
+  document.getElementById("toggle-team").classList.toggle("active", type==="team");
+  document.getElementById("individual-select").style.display = type==="individual" ? "block" : "none";
+  document.getElementById("team-select").style.display = type==="team" ? "block" : "none";
+}
+
+// ── SUBMIT SCORE ──
+async function submitScore() {
+  const date = document.getElementById("score-date").value;
+  const category = document.getElementById("score-category").value;
+  const points = Number(document.getElementById("score-points").value);
+  const note = document.getElementById("score-note").value.trim();
+  const btnText = document.getElementById("submit-btn-text");
+  if (!date || !category || isNaN(points) || points === 0) { showToast("Fill in all required fields.", true); return; }
+
+  let targetType, targetId;
+  if (window._state.targetType === "individual") {
+    const checked = Array.from(document.querySelectorAll("#member-checkboxes input:checked")).map(el => el.value);
+    if (!checked.length) { showToast("Select at least one member.", true); return; }
+    targetType = "individual"; targetId = checked;
+  } else {
+    const team = document.getElementById("score-team-sel").value;
+    if (!team) { showToast("Select a team.", true); return; }
+    targetType = "team"; targetId = team;
+  }
+
+  btnText.innerHTML = '<span class="spinner"></span>';
+  try {
+    const entry = { date, category, points, targetType, targetId, note: note||null,
+      createdBy: auth.currentUser?.email||"", createdAt: new Date().toISOString() };
+    const ref = await addDoc(window._currentSeasonEntriesRef, entry);
+    window._state.entries.unshift({ id: ref.id, ...entry });
+    document.getElementById("score-points").value = "";
+    document.getElementById("score-note").value = "";
+    document.getElementById("score-category").value = "";
+    document.querySelectorAll("#member-checkboxes input").forEach(el => el.checked = false);
+    showToast("Score added ✓");
+    renderDashboard(); renderHistory();
+  } catch(e) { showToast("Error: " + e.message, true); }
+  btnText.textContent = "Submit Score";
+}
+
+// ── HISTORY ──
+function renderHistory() {
+  const filterMember = document.getElementById("filter-member").value;
+  const filterCategory = document.getElementById("filter-category").value;
+  const { members, teams } = window._state;
+  const role = window._state.userRole;
+
+  let filtered = [...window._state.entries];
+  if (filterMember) {
+    filtered = filtered.filter(e => {
+      if (e.targetType !== "individual") return false;
+      return (Array.isArray(e.targetId) ? e.targetId : [e.targetId]).includes(filterMember);
+    });
+  }
+  if (filterCategory) filtered = filtered.filter(e => e.category === filterCategory);
+
+  const el = document.getElementById("history-list");
+  if (!filtered.length) { el.innerHTML = `<div class="empty-state"><div class="big">—</div><p>No entries found</p></div>`; return; }
+
+  const canEdit = role === "admin" || role === "leader";
+  el.innerHTML = filtered.map(e => {
+    const pts = Number(e.points);
+    const sign = pts >= 0 ? "+" : "";
+    const cls = pts >= 0 ? "positive" : "negative";
+    let targetLabel = e.targetType === "team"
+      ? (teams[e.targetId]?.name || e.targetId)
+      : (Array.isArray(e.targetId) ? e.targetId : [e.targetId]).map(id => members[id]?.name || id).join(", ");
+    const editBtns = canEdit ? `
+      <div class="history-actions">
+        <button class="icon-btn" onclick="openEditModal('${e.id}',${pts},\`${(e.note||"").replace(/`/g,"'")}\`)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </button>
+        <button class="icon-btn delete" onclick="deleteEntry('${e.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>` : "";
+    return `
+      <div class="history-item">
+        <span class="history-points ${cls}">${sign}${pts}</span>
+        <div class="history-info">
+          <div class="history-target">${targetLabel}</div>
+          <div class="history-meta">${e.category} · ${e.date}</div>
+          ${e.note ? `<div class="history-note">${e.note}</div>` : ""}
+        </div>
+        ${editBtns}
+      </div>`;
+  }).join("");
+}
+
+function openEditModal(id, points, note) {
+  document.getElementById("edit-entry-id").value = id;
+  document.getElementById("edit-points").value = points;
+  document.getElementById("edit-note").value = note;
+  document.getElementById("edit-modal").classList.add("open");
+}
+function closeModal() { document.getElementById("edit-modal").classList.remove("open"); }
+
+async function saveEdit() {
+  const id = document.getElementById("edit-entry-id").value;
+  const points = Number(document.getElementById("edit-points").value);
+  const note = document.getElementById("edit-note").value.trim();
+  try {
+    await updateDoc(doc(window._currentSeasonEntriesRef, id), { points, note: note||null });
+    const idx = window._state.entries.findIndex(e => e.id === id);
+    if (idx > -1) { window._state.entries[idx].points = points; window._state.entries[idx].note = note||null; }
+    closeModal(); showToast("Updated ✓"); renderDashboard(); renderHistory();
+  } catch(e) { showToast("Error: " + e.message, true); }
+}
+
+async function deleteEntry(id) {
+  if (!confirm("Delete this entry?")) return;
+  try {
+    await deleteDoc(doc(window._currentSeasonEntriesRef, id));
+    window._state.entries = window._state.entries.filter(e => e.id !== id);
+    showToast("Deleted"); renderDashboard(); renderHistory();
+  } catch(e) { showToast("Error: " + e.message, true); }
+}
+
+// ── ADMIN: PENDING USERS ──
+function listenPendingUsers() {
+  const q = query(usersColRef, where("role", "==", "pending"));
+  onSnapshot(q, snap => {
+    const el = document.getElementById("pending-users-list");
+    if (snap.empty) { el.innerHTML = `<p style="color:var(--text2);font-size:13px;">No pending approvals</p>`; return; }
+    el.innerHTML = snap.docs.map(d => {
+      const u = d.data();
+      return `
+        <div class="pending-user-row">
+          <div class="pending-user-info">
+            <div class="pending-user-email">${u.email}</div>
+            <div class="pending-user-name">${u.displayName||""}</div>
+          </div>
+          <div class="pending-user-actions">
+            <button class="approve-btn approve-leader" onclick="approveUser('${d.id}','leader')">Leader</button>
+            <button class="approve-btn approve-student" onclick="approveUser('${d.id}','student')">Student</button>
+            <button class="approve-btn approve-deny" onclick="approveUser('${d.id}','denied')">Deny</button>
+          </div>
+        </div>`;
+    }).join("");
+  });
+}
+
+async function approveUser(uid, role) {
+  await updateDoc(doc(db, "users", uid), { role });
+  showToast(`User set as ${role} ✓`);
+  loadApprovedUsers();
+}
+
+async function loadApprovedUsers() {
+  const snap = await getDocs(query(usersColRef, where("role", "!=", "pending")));
+  const { members } = window._state;
+  const memberOpts = Object.entries(members).map(([mid,m]) => `<option value="${mid}">${m.name}</option>`).join("");
+  const tbody = document.getElementById("approved-users-tbody");
+  tbody.innerHTML = snap.docs.map(d => {
+    const u = d.data();
+    if (u.role === "pending") return "";
+    const linkedSel = `<select onchange="window._linkMemberForUser('${d.id}',this.value)" style="padding:4px 8px;font-size:11px;">
+      <option value="">—</option>${memberOpts.replace(`value="${u.linkedMemberId||''}"`,`value="${u.linkedMemberId||''}" selected`)}
+    </select>`;
+    return `
+      <tr>
+        <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;">${u.email}</td>
+        <td style="font-size:12px;">${u.displayName||""}</td>
+        <td>
+          <select onchange="changeUserRole('${d.id}',this.value)" style="padding:4px 8px;font-size:11px;">
+            <option value="admin" ${u.role==="admin"?"selected":""}>admin</option>
+            <option value="leader" ${u.role==="leader"?"selected":""}>leader</option>
+            <option value="student" ${u.role==="student"?"selected":""}>student</option>
+            <option value="denied" ${u.role==="denied"?"selected":""}>denied</option>
+          </select>
+        </td>
+        <td>${linkedSel}</td>
+        <td><button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="revokeUser('${d.id}')">Revoke</button></td>
+      </tr>`;
+  }).join("");
+
+  window._linkMemberForUser = async (uid, memberId) => {
+    await updateDoc(doc(db, "users", uid), { linkedMemberId: memberId });
+  };
+}
+
+async function changeUserRole(uid, role) {
+  await updateDoc(doc(db, "users", uid), { role });
+  showToast("Role updated ✓");
+}
+
+async function revokeUser(uid) {
+  if (!confirm("Revoke access?")) return;
+  await updateDoc(doc(db, "users", uid), { role: "denied" });
+  showToast("Access revoked");
+  loadApprovedUsers();
+}
+
+// ── ADMIN: SEASON ──
+async function saveSeason() {
+  const name = document.getElementById("admin-season-name").value.trim();
+  const start = document.getElementById("admin-season-start").value;
+  const end = document.getElementById("admin-season-end").value;
+  const reward = document.getElementById("admin-season-reward").value.trim();
+  if (!name || !start || !end) { showToast("Fill season name, start, end.", true); return; }
+  window._state.season = { ...window._state.season, name, start, end, reward };
+  await setDoc(configRef, { season: window._state.season }, { merge: true });
+  showToast("Season saved ✓");
+  updateTopbarSeason(); renderDashboard();
+}
+
+// ── ADMIN: TEAMS ──
+function renderAdminTeams() {
+  const container = document.getElementById("admin-teams-list");
+  container.innerHTML = Object.entries(window._state.teams).map(([tid, t]) => `
+    <div class="member-manage-row" data-team-id="${tid}">
+      <input type="text" value="${t.name}" placeholder="Team name" class="admin-team-name">
+      <input type="text" value="${t.leader||""}" placeholder="Leader" class="admin-team-leader" style="max-width:110px;">
+      <input type="text" value="${t.motto||""}" placeholder="Motto" class="admin-team-motto">
+      <button class="btn btn-ghost btn-sm" onclick="removeTeamRow('${tid}')">✕</button>
+    </div>`).join("");
+}
+
+function addTeamRow() {
+  const id = "team_" + Date.now();
+  window._state.teams[id] = { name: "", leader: "", motto: "", color: "victory", order: 99 };
+  renderAdminTeams();
+}
+function removeTeamRow(tid) { delete window._state.teams[tid]; renderAdminTeams(); }
+
+async function saveTeams() {
+  const rows = document.querySelectorAll("#admin-teams-list [data-team-id]");
+  rows.forEach(row => {
+    const tid = row.dataset.teamId;
+    if (window._state.teams[tid]) {
+      window._state.teams[tid].name = row.querySelector(".admin-team-name").value;
+      window._state.teams[tid].leader = row.querySelector(".admin-team-leader").value;
+      window._state.teams[tid].motto = row.querySelector(".admin-team-motto").value;
+    }
+  });
+  await setDoc(configRef, { teams: window._state.teams }, { merge: true });
+  showToast("Teams saved ✓");
+  buildTeamSelect(); renderDashboard();
+}
+
+// ── ADMIN: MEMBERS ──
+function renderAdminMembers() {
+  const container = document.getElementById("admin-members-list");
+  const teamOpts = Object.entries(window._state.teams).map(([tid,t]) => `<option value="${tid}">${t.name}</option>`).join("");
+  container.innerHTML = Object.entries(window._state.members).map(([mid, m]) => `
+    <div class="member-manage-row" data-member-id="${mid}">
+      <input type="text" value="${m.name}" placeholder="Name" class="admin-member-name">
+      <select class="admin-member-team">${teamOpts.replace(`value="${m.teamId}"`,`value="${m.teamId}" selected`)}</select>
+      <button class="btn btn-ghost btn-sm" onclick="removeMemberRow('${mid}')">✕</button>
+    </div>`).join("");
+}
+
+function addMemberRow() {
+  const id = "member_" + Date.now();
+  const firstTeam = Object.keys(window._state.teams)[0] || "victory";
+  window._state.members[id] = { name: "", teamId: firstTeam, isLeader: false };
+  renderAdminMembers();
+}
+function removeMemberRow(mid) { delete window._state.members[mid]; renderAdminMembers(); }
+
+async function saveMembers() {
+  const rows = document.querySelectorAll("#admin-members-list [data-member-id]");
+  rows.forEach(row => {
+    const mid = row.dataset.memberId;
+    if (window._state.members[mid]) {
+      window._state.members[mid].name = row.querySelector(".admin-member-name").value;
+      window._state.members[mid].teamId = row.querySelector(".admin-member-team").value;
+    }
+  });
+  await setDoc(configRef, { members: window._state.members }, { merge: true });
+  showToast("Members saved ✓");
+  buildMemberCheckboxes(); buildFilterOptions(); renderDashboard();
+}
+
+// ── ADMIN: POINT STANDARDS ──
+function renderAdminStandards() {
+  const container = document.getElementById("admin-standards-list");
+  const standards = window._state.standards;
+  container.innerHTML = standards.map((cat, ci) => `
+    <div class="std-admin-category" data-cat-index="${ci}">
+      <div class="std-admin-category-header">
+        <input type="text" value="${cat.category}" class="admin-cat-name" style="font-weight:600;font-size:13px;flex:1;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);margin-left:10px;cursor:pointer;">
+          <input type="checkbox" ${cat.isNegative?"checked":""} class="admin-cat-negative" style="width:auto;">
+          Minus points
+        </label>
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="removeStandardCategory(${ci})">✕ Remove</button>
+      </div>
+      ${cat.items.map((item, ii) => `
+        <div class="std-admin-row" data-item-index="${ii}">
+          <input type="text" value="${item.label}" placeholder="Label" class="admin-std-label">
+          <input type="text" value="${item.pts}" placeholder="pts" class="pts-input admin-std-pts">
+          <button class="btn btn-ghost btn-sm" onclick="removeStandardItem(${ci},${ii})">✕</button>
+        </div>`).join("")}
+      <button class="btn btn-ghost btn-sm" style="margin-top:4px;width:100%;" onclick="addStandardItem(${ci})">+ Add Item</button>
+    </div>`).join("");
+}
+
+function addStandardCategory() {
+  window._state.standards.push({ category: "New Category", isNegative: false, items: [] });
+  renderAdminStandards();
+}
+
+function addStandardItem(ci) {
+  window._state.standards[ci].items.push({ label: "", pts: "1" });
+  renderAdminStandards();
+}
+
+function removeStandardCategory(ci) {
+  window._state.standards.splice(ci, 1);
+  renderAdminStandards();
+}
+
+function removeStandardItem(ci, ii) {
+  window._state.standards[ci].items.splice(ii, 1);
+  renderAdminStandards();
+}
+
+async function saveStandards() {
+  // Read current values from DOM
+  const catEls = document.querySelectorAll("#admin-standards-list [data-cat-index]");
+  catEls.forEach(catEl => {
+    const ci = parseInt(catEl.dataset.catIndex);
+    if (!window._state.standards[ci]) return;
+    window._state.standards[ci].category = catEl.querySelector(".admin-cat-name").value;
+    window._state.standards[ci].isNegative = catEl.querySelector(".admin-cat-negative").checked;
+    const itemEls = catEl.querySelectorAll("[data-item-index]");
+    itemEls.forEach(itemEl => {
+      const ii = parseInt(itemEl.dataset.itemIndex);
+      if (!window._state.standards[ci].items[ii]) return;
+      window._state.standards[ci].items[ii].label = itemEl.querySelector(".admin-std-label").value;
+      window._state.standards[ci].items[ii].pts = itemEl.querySelector(".admin-std-pts").value;
+    });
+  });
+  await setDoc(configRef, { standards: window._state.standards }, { merge: true });
+  showToast("Standards saved ✓");
+  buildCategorySelect(); buildFilterOptions(); renderStandardsDisplay();
+}
+
+async function confirmNewSeason() {
+  if (!confirm("Archive current season and start a new one?")) return;
+  const newId = "season_" + Date.now();
+  window._state.season.currentSeasonId = newId;
+  const num = parseInt((window._state.season.name.match(/\d+/)||[1])[0]) + 1;
+  window._state.season.name = "Season " + num;
+  window._state.entries = [];
+  window._currentSeasonEntriesRef = collection(communityRef, "seasons", newId, "scoreEntries");
+  await setDoc(configRef, { season: window._state.season }, { merge: true });
+  showToast("New season started! ✓");
+  updateTopbarSeason(); renderDashboard(); renderHistory();
+}
+
+// ── TAB ──
+function switchTab(tab) {
+  ["dashboard","add","history","admin"].forEach(t => {
+    document.getElementById(`screen-${t}`).classList.toggle("active", t===tab);
+    document.getElementById(`nav-${t}`).classList.toggle("active", t===tab);
+  });
+  if (tab === "history") renderHistory();
+  if (tab === "admin") {
+    renderAdminTeams(); renderAdminMembers(); renderAdminStandards();
+    loadAdminSeason(); loadApprovedUsers();
+  }
+}
+
+function loadAdminSeason() {
+  const s = window._state.season;
+  document.getElementById("admin-season-name").value = s.name||"";
+  document.getElementById("admin-season-start").value = s.start||"";
+  document.getElementById("admin-season-end").value = s.end||"";
+  document.getElementById("admin-season-reward").value = s.reward||"";
+}
+
+// ── TOAST ──
+function showToast(msg, isError=false) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.borderColor = isError ? "var(--danger)" : "var(--success)";
+  el.style.color = isError ? "var(--danger)" : "var(--success)";
+  el.style.background = isError ? "#f75f5f22" : "#34d39922";
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2800);
+}
+</script>
+</body>
+</html>

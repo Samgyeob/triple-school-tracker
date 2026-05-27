@@ -10,9 +10,6 @@
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
     import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-    // ============================================================
-    // FIREBASE CONFIG — paste your config here
-    // ============================================================
     const firebaseConfig = {
       apiKey: "AIzaSyDcHNc3wuECr_obd7BneB_8ZvqP5EdkQyY",
       authDomain: "triple-school-tracker.firebaseapp.com",
@@ -22,7 +19,6 @@
       appId: "1:156047796789:web:b945a1b1e7426f86a71f7c",
       measurementId: "G-GPH6FW4PTB"
     };
-    // ============================================================
 
     let db = null;
     let firebaseReady = false;
@@ -30,9 +26,7 @@
     try {
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
-      if (!firebaseConfig.apiKey.includes('YOUR_')) {
-        firebaseReady = true;
-      }
+      if (!firebaseConfig.apiKey.includes('YOUR_')) firebaseReady = true;
     } catch(e) {
       console.warn('Firebase not configured, running in offline mode');
     }
@@ -45,10 +39,6 @@
   </script>
 
   <style>
-    /* ============================================================
-       DESIGN Editorial Printed Matter — warm off-white, ink black,
-       accent in muted olive. Instrument Serif headlines + DM Mono data.
-       ============================================================ */
     :root {
       --ink: #1a1a18;
       --paper: #f5f2eb;
@@ -65,6 +55,33 @@
       --font-sans: 'Pretendard', system-ui, sans-serif;
     }
 
+    /* ── THEMES (admin에서 설정) ── */
+    [data-theme="dark"] {
+      --ink: #f0ebe2; --paper: #141412; --cream: #1e1c19;
+      --olive: #a8b88a; --olive-light: #6b7c4e;
+      --rust: #d4866a; --muted: #6a6460; --border: #2e2c28; --white: #1a1816;
+    }
+    [data-theme="navy"] {
+      --ink: #e8eaf0; --paper: #0d1117; --cream: #161b22;
+      --olive: #58a6ff; --olive-light: #1f6feb;
+      --rust: #f78166; --muted: #6e7681; --border: #30363d; --white: #13171f;
+    }
+    [data-theme="rose"] {
+      --ink: #2d1f24; --paper: #fdf0f2; --cream: #f7dde3;
+      --olive: #c0576e; --olive-light: #e8a0b0;
+      --rust: #8b3a4e; --muted: #9a7880; --border: #e8c8cf; --white: #fff5f7;
+    }
+    [data-theme="forest"] {
+      --ink: #1c2416; --paper: #f0f4ec; --cream: #e2ebda;
+      --olive: #3d6b32; --olive-light: #7aaa6a;
+      --rust: #8b5a2b; --muted: #7a8c72; --border: #c8d8be; --white: #f8fbf5;
+    }
+    [data-theme="slate"] {
+      --ink: #e2e8f0; --paper: #0f172a; --cream: #1e293b;
+      --olive: #94a3b8; --olive-light: #64748b;
+      --rust: #f59e0b; --muted: #64748b; --border: #334155; --white: #1e293b;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -74,15 +91,14 @@
       min-height: 100vh;
       font-size: 14px;
       line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
     }
 
-    /* ---- LAYOUT ---- */
     .app { display: flex; flex-direction: column; min-height: 100vh; }
-
     .screen { display: none; flex: 1; }
     .screen.active { display: flex; flex-direction: column; }
 
-    /* ---- HEADER ---- */
+    /* ── TOP BAR ── */
     .top-bar {
       display: flex; align-items: center; justify-content: space-between;
       padding: 14px 20px;
@@ -99,7 +115,7 @@
     }
     .badge.leader { background: var(--rust); }
 
-    /* ---- NAV ---- */
+    /* ── NAV ── */
     .bottom-nav {
       display: flex; border-top: 1px solid var(--border);
       background: var(--white); position: sticky; bottom: 0;
@@ -114,11 +130,10 @@
     .nav-btn.active { color: var(--ink); }
     .nav-btn svg { width: 18px; height: 18px; }
 
-    /* ---- LOGIN ---- */
+    /* ── LOGIN ── */
     #screen-login {
       justify-content: center; align-items: center;
-      padding: 32px 24px;
-      background: var(--paper);
+      padding: 32px 24px; background: var(--paper);
     }
     .login-wrap { width: 100%; max-width: 360px; }
     .login-title {
@@ -165,15 +180,32 @@
       text-align: center;
     }
 
-    /* ---- BOOKS SCREEN ---- */
+    /* ── NOTICE BANNER ── */
+    .notice-banner {
+      background: var(--cream); border-bottom: 1px solid var(--border);
+      padding: 10px 16px; display: none;
+    }
+    .notice-banner.visible { display: block; }
+    .notice-banner-title {
+      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--olive); margin-bottom: 4px;
+    }
+    .notice-item {
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .notice-item:last-child { border-bottom: none; }
+    .notice-item-title { font-weight: 600; margin-bottom: 2px; }
+    .notice-item-body { color: var(--muted); font-size: 12px; }
+    .notice-item-meta { font-family: var(--font-mono); font-size: 10px; color: var(--border); margin-top: 3px; }
+
+    /* ── BOOKS ── */
     #screen-books { padding: 0; }
     .content-scroll { flex: 1; overflow-y: auto; padding: 16px; }
 
     .week-nav {
       display: flex; gap: 6px; overflow-x: auto;
       padding: 12px 16px; border-bottom: 1px solid var(--border);
-      background: var(--white);
-      scrollbar-width: none;
+      background: var(--white); scrollbar-width: none;
     }
     .week-nav::-webkit-scrollbar { display: none; }
     .week-chip {
@@ -221,9 +253,7 @@
     }
     .btn-icon:hover { background: var(--cream); color: var(--rust); }
 
-    .empty-state {
-      text-align: center; padding: 48px 24px; color: var(--muted);
-    }
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
     .empty-state-title { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
     .empty-state-sub { font-size: 13px; }
 
@@ -232,14 +262,13 @@
       width: 48px; height: 48px;
       background: var(--ink); color: var(--paper);
       border: none; border-radius: 50%; cursor: pointer;
-      font-size: 22px; display: flex; align-items: center; justify-content: center;
+      font-size: 22px; display: none; align-items: center; justify-content: center;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.15s;
-      display: none;
     }
     .fab:hover { transform: scale(1.05); }
     .fab.visible { display: flex; }
 
-    /* ---- PROGRESS ---- */
+    /* ── PROGRESS ── */
     #screen-progress { padding: 0; }
 
     .stats-row {
@@ -287,26 +316,20 @@
     .cal-day.done { background: var(--olive); color: white; font-weight: 500; }
     .cal-day.today { border: 1.5px solid var(--olive); }
 
-    /* ---- LEADERBOARD ---- */
+    /* ── LEADERBOARD ── */
     #screen-leader { padding: 0; }
 
     .leader-filter {
       padding: 10px 16px; border-bottom: 1px solid var(--border);
       background: var(--white);
     }
-    .leader-filter select {
-      width: auto; padding: 6px 10px; font-size: 13px;
-    }
+    .leader-filter select { width: auto; padding: 6px 10px; font-size: 13px; }
 
     .matrix-scroll { flex: 1; overflow: auto; }
-    .matrix-table {
-      width: max-content; min-width: 100%;
-      border-collapse: collapse;
-    }
+    .matrix-table { width: max-content; min-width: 100%; border-collapse: collapse; }
     .matrix-table th, .matrix-table td {
       padding: 10px 14px; text-align: center;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
+      border-bottom: 1px solid var(--border); white-space: nowrap;
     }
     .matrix-table thead th {
       background: var(--white); font-family: var(--font-mono);
@@ -314,9 +337,7 @@
       color: var(--muted); position: sticky; top: 0;
       border-bottom: 2px solid var(--border);
     }
-    .matrix-table thead th.name-col {
-      position: sticky; left: 0; z-index: 2; text-align: left;
-    }
+    .matrix-table thead th.name-col { position: sticky; left: 0; z-index: 2; text-align: left; }
     .matrix-table tbody td.name-col {
       position: sticky; left: 0; background: var(--white);
       font-weight: 600; text-align: left; z-index: 1;
@@ -327,10 +348,9 @@
 
     .check-v { color: var(--olive); font-weight: 700; font-size: 16px; }
     .check-dash { color: var(--border); }
-
     .total-cell { font-family: var(--font-mono); font-weight: 500; color: var(--olive); }
 
-    /* ---- MODAL ---- */
+    /* ── MODAL ── */
     .modal-overlay {
       display: none; position: fixed; inset: 0;
       background: rgba(26,26,24,0.5); z-index: 200;
@@ -344,9 +364,7 @@
       animation: slideUp 0.25s ease;
     }
     @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } }
-    .modal-title {
-      font-family: var(--font-serif); font-size: 22px; margin-bottom: 20px;
-    }
+    .modal-title { font-family: var(--font-serif); font-size: 22px; margin-bottom: 20px; }
     .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
     .btn-secondary {
       flex: 1; padding: 11px; border: 1px solid var(--border);
@@ -363,7 +381,7 @@
     }
     .btn-save:hover { opacity: 0.85; }
 
-    /* ---- SYNC INDICATOR ---- */
+    /* ── SYNC ── */
     .sync-dot {
       width: 6px; height: 6px; border-radius: 50%;
       background: var(--olive-light); display: inline-block;
@@ -379,7 +397,7 @@
     }
     .btn-text:hover { color: var(--ink); }
 
-    /* ---- TOAST ---- */
+    /* ── TOAST ── */
     .toast {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
       background: var(--ink); color: var(--paper); padding: 9px 16px;
@@ -396,8 +414,8 @@
 
   <div class="screen active" id="screen-login">
     <div class="login-wrap">
-      <div class="login-title">Triple<br>School</div>
-      <div class="login-sub">독서 기록 Reading Tracker</div>
+      <div class="login-title" id="login-title">Triple<br>School</div>
+      <div class="login-sub" id="login-sub">독서 기록 Reading Tracker</div>
 
       <div class="form-group">
         <label>이름 Name</label>
@@ -435,6 +453,12 @@
         <span class="badge" id="role-badge">학생</span>
         <button class="btn-text" onclick="logout()" style="color: var(--muted)">로그아웃</button>
       </div>
+    </div>
+
+    <!-- 공지사항 배너 -->
+    <div class="notice-banner" id="notice-banner">
+      <div class="notice-banner-title">📢 공지사항</div>
+      <div id="notice-list"></div>
     </div>
 
     <div id="tab-books" class="tab-content" style="display: flex; flex-direction: column; flex: 1;">
@@ -532,35 +556,86 @@
   // ============================================================
   let state = {
     user: null,
-    books: [],        // [{id, title, titleKo, author, desc, week}]
-    records: [],      // [{userId, bookId, date}]
-    users: [],        // [{id, name, group, role}]
-    selectedWeek: 1,
-    maxWeek: 1,
+    books: [], records: [], users: [],
+    selectedWeek: 1, maxWeek: 1,
     calYear: new Date().getFullYear(),
     calMonth: new Date().getMonth(),
   };
 
-  const LS_KEY = 'triple_v1';
+  const LS_KEY  = 'triple_v1';
+  const ADM_KEY = 'triple_admin';
 
   function loadLocal() {
     try {
       const d = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
-      if (d.books) state.books = d.books;
+      if (d.books)   state.books   = d.books;
       if (d.records) state.records = d.records;
-      if (d.users) state.users = d.users;
-      if (d.user) { state.user = d.user; return true; }
+      if (d.users)   state.users   = d.users;
+      if (d.user)    { state.user  = d.user; return true; }
     } catch(e) {}
     return false;
   }
 
   function saveLocal() {
     localStorage.setItem(LS_KEY, JSON.stringify({
-      user: state.user,
-      books: state.books,
-      records: state.records,
-      users: state.users,
+      user: state.user, books: state.books,
+      records: state.records, users: state.users,
     }));
+  }
+
+  // ============================================================
+  // ADMIN SETTINGS 적용
+  // ============================================================
+  function loadAdminSettings() {
+    try {
+      const adm = JSON.parse(localStorage.getItem(ADM_KEY) || '{}');
+
+      // 테마
+      if (adm.theme && adm.theme !== 'default') {
+        document.documentElement.setAttribute('data-theme', adm.theme);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+
+      // 앱 이름
+      if (adm.appName) {
+        document.title = adm.appName;
+        const loginTitle = document.getElementById('login-title');
+        if (loginTitle) loginTitle.textContent = adm.appName;
+      }
+      if (adm.appSub) {
+        const loginSub = document.getElementById('login-sub');
+        if (loginSub) loginSub.textContent = adm.appSub;
+      }
+
+      // 공지사항
+      const notices = adm.notices || [];
+      const banner  = document.getElementById('notice-banner');
+      const list    = document.getElementById('notice-list');
+      if (notices.length && banner && list) {
+        banner.classList.add('visible');
+        list.innerHTML = notices.map(n => `
+          <div class="notice-item">
+            <div class="notice-item-title">${esc(n.title)}</div>
+            <div class="notice-item-body">${esc(n.body)}</div>
+            <div class="notice-item-meta">${n.group ? n.group + ' · ' : ''}${n.date}</div>
+          </div>`).join('');
+      } else if (banner) {
+        banner.classList.remove('visible');
+      }
+
+      // 그룹 목록 (admin에서 추가/삭제한 그룹 반영)
+      if (adm.groups && adm.groups.length) {
+        const selects = ['input-group', 'filter-group'];
+        selects.forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const base = id === 'filter-group' ? '<option value="">모든 그룹 All Groups</option>' : '';
+          el.innerHTML = base + adm.groups.map(g => `<option>${esc(g)}</option>`).join('');
+        });
+      }
+
+    } catch(e) { console.warn('admin settings load failed', e); }
   }
 
   // ============================================================
@@ -574,7 +649,7 @@
   }
 
   function doLogin() {
-    const name = document.getElementById('input-name').value.trim();
+    const name  = document.getElementById('input-name').value.trim();
     const group = document.getElementById('input-group').value;
     if (!name) { showToast('이름을 입력해주세요'); return; }
 
@@ -594,6 +669,7 @@
   }
 
   function enterApp() {
+    loadAdminSettings(); // ← admin 설정 적용
     document.getElementById('screen-login').classList.remove('active');
     document.getElementById('screen-main').classList.add('active');
     document.getElementById('role-badge').textContent = state.user.role === 'leader' ? '리더' : '학생';
@@ -629,7 +705,7 @@
       (tab === 'books' && state.user.role === 'leader') ? 'flex' : 'none';
 
     if (tab === 'progress') renderProgress();
-    if (tab === 'leader') renderLeader();
+    if (tab === 'leader')   renderLeader();
   }
 
   // ============================================================
@@ -642,7 +718,7 @@
   }
 
   function renderWeekNav() {
-    const nav = document.getElementById('week-nav');
+    const nav   = document.getElementById('week-nav');
     nav.innerHTML = '';
     const total = state.user.role === 'leader' ? state.maxWeek + 1 : state.maxWeek;
     for (let w = 1; w <= total; w++) {
@@ -659,7 +735,7 @@
   // BOOKS
   // ============================================================
   function renderBooks() {
-    const list = document.getElementById('book-list');
+    const list      = document.getElementById('book-list');
     const weekBooks = state.books.filter(b => b.week === state.selectedWeek);
     const myRecords = state.records.filter(r => r.userId === state.user.id);
 
@@ -672,16 +748,16 @@
     }
 
     list.innerHTML = weekBooks.map(book => {
-      const rec = myRecords.find(r => r.bookId === book.id);
+      const rec  = myRecords.find(r => r.bookId === book.id);
       const done = !!rec;
       return `<div class="book-card ${done ? 'done' : ''}" id="card-${book.id}">
         <div class="book-check ${done ? 'checked' : ''}" onclick="toggleBook('${book.id}')"></div>
         <div class="book-info">
           <div class="book-title">${esc(book.title)}</div>
           ${book.titleKo ? `<div class="book-title-ko">${esc(book.titleKo)}</div>` : ''}
-          ${book.author ? `<div class="book-author">${esc(book.author)}</div>` : ''}
-          ${rec ? `<div class="book-date">${rec.date} 완료</div>` : ''}
-          ${book.desc ? `<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">${esc(book.desc)}</div>` : ''}
+          ${book.author  ? `<div class="book-author">${esc(book.author)}</div>` : ''}
+          ${rec          ? `<div class="book-date">${rec.date} 완료</div>` : ''}
+          ${book.desc    ? `<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">${esc(book.desc)}</div>` : ''}
         </div>
         ${state.user.role === 'leader' ? `<div class="book-actions">
           <button class="btn-icon" onclick="deleteBook('${book.id}')" title="삭제">
@@ -694,7 +770,7 @@
 
   function toggleBook(bookId) {
     const userId = state.user.id;
-    const idx = state.records.findIndex(r => r.userId === userId && r.bookId === bookId);
+    const idx    = state.records.findIndex(r => r.userId === userId && r.bookId === bookId);
     if (idx >= 0) {
       state.records.splice(idx, 1);
       if (window.__firebaseReady) fsDeleteRecord(userId, bookId);
@@ -707,12 +783,21 @@
     renderBooks();
   }
 
-  // ============================================================
-  // ADD / DELETE BOOK
-  // ============================================================
-  function openAddBook() {
-    document.getElementById('modal-add').classList.add('open');
+  function deleteBook(bookId) {
+    state.books   = state.books.filter(b => b.id !== bookId);
+    state.records = state.records.filter(r => r.bookId !== bookId);
+    saveLocal();
+    if (window.__firebaseReady) {
+      const { doc, deleteDoc } = window.__fsModules;
+      deleteDoc(doc(window.__db, 'books', bookId));
+    }
+    recalcMaxWeek(); renderWeekNav(); renderBooks();
   }
+
+  // ============================================================
+  // ADD BOOK (leader)
+  // ============================================================
+  function openAddBook() { document.getElementById('modal-add').classList.add('open'); }
   function closeModal(e) {
     if (e.target.classList.contains('modal-overlay'))
       e.target.classList.remove('open');
@@ -720,27 +805,20 @@
 
   function saveBook() {
     const titleKo = document.getElementById('m-title-ko').value.trim();
-    const title = document.getElementById('m-title').value.trim();
-    const author = document.getElementById('m-author').value.trim();
-    const desc = document.getElementById('m-desc').value.trim();
+    const title   = document.getElementById('m-title').value.trim();
+    const author  = document.getElementById('m-author').value.trim();
+    const desc    = document.getElementById('m-desc').value.trim();
     if (!titleKo && !title) { showToast('제목을 입력하세요'); return; }
 
     const book = { id: uid(), title: title || titleKo, titleKo, author, desc, week: state.selectedWeek };
     state.books.push(book);
-    if (book.week > state.maxWeek) {
-      state.maxWeek = book.week;
-      state.selectedWeek = book.week;
-    }
+    if (book.week > state.maxWeek) { state.maxWeek = book.week; state.selectedWeek = book.week; }
     saveLocal();
     if (window.__firebaseReady) fsUpsertBook(book);
 
     document.getElementById('modal-add').classList.remove('open');
-    ['m-title-ko','m-title','m-author','m-desc'].forEach(id =>
-      document.getElementById(id).value = '');
-
-    recalcMaxWeek();
-    renderWeekNav();
-    renderBooks();
+    ['m-title-ko','m-title','m-author','m-desc'].forEach(id => document.getElementById(id).value = '');
+    recalcMaxWeek(); renderWeekNav(); renderBooks();
     showToast('추가됐어');
   }
 
@@ -750,23 +828,20 @@
   function renderProgress() {
     const myRecords = state.records.filter(r => r.userId === state.user.id);
     const doneDates = new Set(myRecords.map(r => r.date));
-
-    document.getElementById('stat-total').textContent = myRecords.length;
+    document.getElementById('stat-total').textContent  = myRecords.length;
     document.getElementById('stat-streak').textContent = calcStreak(doneDates);
-
     renderCalendar(doneDates);
   }
 
   function calcStreak(doneDates) {
     let streak = 0;
-    const now = new Date();
+    const now  = new Date();
     for (let w = 0; w < 52; w++) {
       const mon = new Date(now);
       mon.setDate(mon.getDate() - mon.getDay() + 1 - w * 7);
       const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
       const hasRead = [...doneDates].some(d => {
-        const dt = new Date(d);
-        return dt >= mon && dt <= sun;
+        const dt = new Date(d); return dt >= mon && dt <= sun;
       });
       if (!hasRead) break;
       streak++;
@@ -781,30 +856,25 @@
 
     const grid = document.getElementById('cal-grid');
     grid.innerHTML = '';
-
-    const dows = ['일','월','화','수','목','금','토'];
-    dows.forEach(d => {
+    ['일','월','화','수','목','금','토'].forEach(d => {
       const el = document.createElement('div');
-      el.className = 'cal-dow'; el.textContent = d;
-      grid.appendChild(el);
+      el.className = 'cal-dow'; el.textContent = d; grid.appendChild(el);
     });
 
-    const first = new Date(y, m, 1).getDay();
-    const days = new Date(y, m + 1, 0).getDate();
+    const first    = new Date(y, m, 1).getDay();
+    const days     = new Date(y, m + 1, 0).getDate();
     const todayStr = today();
 
     for (let i = 0; i < first; i++) {
-      const el = document.createElement('div'); el.className = 'cal-day other-month';
-      grid.appendChild(el);
+      const el = document.createElement('div'); el.className = 'cal-day other-month'; grid.appendChild(el);
     }
     for (let d = 1; d <= days; d++) {
       const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const el = document.createElement('div');
       let cls = 'cal-day';
       if (doneDates.has(dateStr)) cls += ' done';
-      if (dateStr === todayStr) cls += ' today';
-      el.className = cls; el.textContent = d;
-      grid.appendChild(el);
+      if (dateStr === todayStr)   cls += ' today';
+      el.className = cls; el.textContent = d; grid.appendChild(el);
     }
   }
 
@@ -813,16 +883,12 @@
     if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
     const myRecords = state.records.filter(r => r.userId === state.user.id);
     renderCalendar(new Set(myRecords.map(r => r.date)));
-    const months_ko = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-    document.getElementById('cal-title').textContent = `${state.calYear}년 ${months_ko[state.calMonth]}`;
   }
   function calNext() {
     state.calMonth++;
     if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
     const myRecords = state.records.filter(r => r.userId === state.user.id);
     renderCalendar(new Set(myRecords.map(r => r.date)));
-    const months_ko = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-    document.getElementById('cal-title').textContent = `${state.calYear}년 ${months_ko[state.calMonth]}`;
   }
 
   // ============================================================
@@ -840,16 +906,14 @@
     }
 
     const thead = `<thead><tr>
-      <th class="name-col">이름</th>
-      <th>그룹</th>
+      <th class="name-col">이름</th><th>그룹</th>
       ${state.books.map(b => `<th title="${b.title}">${b.titleKo || b.title}<br><span style="font-weight:400; opacity:0.6;">${b.week}주</span></th>`).join('')}
       <th>합계</th>
     </tr></thead>`;
 
     const tbody = users.map(user => {
       const userRecs = state.records.filter(r => r.userId === user.id);
-      const total = userRecs.length;
-      const cells = state.books.map(book => {
+      const cells    = state.books.map(book => {
         const done = userRecs.some(r => r.bookId === book.id);
         return `<td>${done ? '<span class="check-v">V</span>' : '<span class="check-dash">-</span>'}</td>`;
       }).join('');
@@ -857,11 +921,11 @@
         <td class="name-col">${esc(user.name)}</td>
         <td style="font-family: var(--font-mono); font-size: 11px;">${esc(user.group)}</td>
         ${cells}
-        <td class="total-cell">${total}</td>
+        <td class="total-cell">${userRecs.length}</td>
       </tr>`;
     }).join('');
 
-    table.innerHTML = thead + '<tbody>' + tbody + '<tbody>';
+    table.innerHTML = thead + '<tbody>' + tbody + '</tbody>';
   }
 
   // ============================================================
@@ -869,98 +933,61 @@
   // ============================================================
   function setSyncDot(status) {
     const dot = document.getElementById('sync-dot');
-    if (!dot) return;
-    dot.className = 'sync-dot ' + status;
+    if (dot) dot.className = 'sync-dot ' + status;
   }
-
-  function updateSyncDot() {
-    setSyncDot(window.__firebaseReady ? 'active' : 'offline');
-  }
+  function updateSyncDot() { setSyncDot(window.__firebaseReady ? 'active' : 'offline'); }
 
   async function syncNow() {
     if (!window.__firebaseReady) { showToast('Firebase 미연결 (오프라인 모드)'); return; }
     setSyncDot('syncing');
     try {
-      await Promise.all([
-        fsPushUsers(), fsPushBooks(), fsPushRecords(),
-        fsPullBooks(), fsPullRecords(), fsPullUsers()
-      ]);
-      saveLocal();
-      recalcMaxWeek();
-      renderWeekNav();
-      renderBooks();
-      setSyncDot('active');
-      showToast('동기화 완료');
-    } catch(e) {
-      setSyncDot('offline');
-      showToast('동기화 실패');
-    }
+      await Promise.all([fsPushUsers(), fsPushBooks(), fsPushRecords(), fsPullBooks(), fsPullRecords(), fsPullUsers()]);
+      saveLocal(); recalcMaxWeek(); renderWeekNav(); renderBooks();
+      setSyncDot('active'); showToast('동기화 완료');
+    } catch(e) { setSyncDot('offline'); showToast('동기화 실패'); }
   }
 
-  // Push helpers
   async function fsPushUsers() {
     const { collection: col, doc, setDoc } = window.__fsModules;
-    for (const u of state.users) {
-      await setDoc(doc(window.__db, 'users', u.id), u);
-    }
+    for (const u of state.users) await setDoc(doc(window.__db, 'users', u.id), u);
   }
   async function fsPushBooks() {
     const { doc, setDoc } = window.__fsModules;
-    for (const b of state.books) {
-      await setDoc(doc(window.__db, 'books', b.id), b);
-    }
+    for (const b of state.books) await setDoc(doc(window.__db, 'books', b.id), b);
   }
   async function fsPushRecords() {
     const { doc, setDoc } = window.__fsModules;
-    for (const r of state.records) {
-      const id = r.userId + '_' + r.bookId;
-      await setDoc(doc(window.__db, 'read_records', id), r);
-    }
+    for (const r of state.records) await setDoc(doc(window.__db, 'read_records', r.userId+'_'+r.bookId), r);
   }
-
-  // Pull helpers
   async function fsPullBooks() {
     const { collection: col, getDocs } = window.__fsModules;
     const snap = await getDocs(col(window.__db, 'books'));
-    snap.forEach(d => {
-      const data = d.data();
-      if (!state.books.find(b => b.id === data.id)) state.books.push(data);
-    });
+    snap.forEach(d => { const data = d.data(); if (!state.books.find(b => b.id === data.id)) state.books.push(data); });
   }
   async function fsPullRecords() {
     const { collection: col, getDocs } = window.__fsModules;
     const snap = await getDocs(col(window.__db, 'read_records'));
     snap.forEach(d => {
-      const data = d.data();
-      const key = r => r.userId + '_' + r.bookId;
+      const data = d.data(); const key = r => r.userId+'_'+r.bookId;
       if (!state.records.find(r => key(r) === key(data))) state.records.push(data);
     });
   }
   async function fsPullUsers() {
     const { collection: col, getDocs } = window.__fsModules;
     const snap = await getDocs(col(window.__db, 'users'));
-    snap.forEach(d => {
-      const data = d.data();
-      if (!state.users.find(u => u.id === data.id)) state.users.push(data);
-    });
+    snap.forEach(d => { const data = d.data(); if (!state.users.find(u => u.id === data.id)) state.users.push(data); });
   }
-
-  // Realtime ops
   async function fsUpsertBook(book) {
     const { doc, setDoc } = window.__fsModules;
     await setDoc(doc(window.__db, 'books', book.id), book);
   }
-  async function fsDeleteBook(bookId) {
-    const { doc, deleteDoc } = window.__fsModules;
-    await deleteDoc(doc(window.__db, 'books', bookId));
-  }
   async function fsUpsertRecord(rec) {
     const { doc, setDoc } = window.__fsModules;
-    await setDoc(doc(window.__db, 'read_records', rec.userId + '_' + rec.bookId), rec);
+    await setDoc(doc(window.__db, 'read_records', rec.userId+'_'+rec.bookId), rec);
   }
   async function fsDeleteRecord(userId, bookId) {
     const { doc, deleteDoc } = window.__fsModules;
-    await deleteDoc(doc(window.__db, 'read_records', userId + '_' + bookId));
+    await deleteDoc(doc(window.__db, 'read_records', userId+'_'+bookId));
   }
 
   // ============================================================
@@ -971,9 +998,7 @@
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
-  function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
@@ -983,14 +1008,14 @@
   // ============================================================
   // INIT
   // ============================================================
+  // 로그인 전에도 테마/앱이름은 미리 적용
+  loadAdminSettings();
+
   document.addEventListener('firebase-ready', () => {
     document.getElementById('offline-note').textContent =
-      window.__firebaseReady
-        ? 'Firebase 연결됨 Connected'
-        : 'Firebase 미연결 — 로컬 모드 Offline mode';
+      window.__firebaseReady ? 'Firebase 연결됨 Connected' : 'Firebase 미연결 — 로컬 모드 Offline mode';
   });
 
-  // Auto-login if session exists
   if (loadLocal() && state.user) {
     document.getElementById('screen-login').classList.remove('active');
     enterApp();
