@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Triple School — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Pretendard:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDcHNc3wuECr_obd7BneB_8ZvqP5EdkQyY",
+      authDomain: "triple-school-tracker.firebaseapp.com",
+      projectId: "triple-school-tracker",
+      storageBucket: "triple-school-tracker.firebasestorage.app",
+      messagingSenderId: "156047796789",
+      appId: "1:156047796789:web:b945a1b1e7426f86a71f7c"
+    };
+    let db=null,firebaseReady=false;
+    try {
+      const app=initializeApp(firebaseConfig);
+      db=getFirestore(app);
+      firebaseReady=!firebaseConfig.apiKey.includes('YOUR_');
+    } catch(e) {}
+    window.__db=db; window.__firebaseReady=firebaseReady;
+    window.__fs={collection,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,addDoc,serverTimestamp};
+    document.dispatchEvent(new Event('firebase-ready'));
+  </script>
+
+  <style>
+    :root {
+      --ink:#1a1a18; --paper:#f5f2eb; --cream:#ede9df;
+      --accent:#6b7c4e; --accent2:#b85c38;
+      --muted:#8a8578; --border:#d4cfc4; --white:#faf8f4;
+      --font-serif:'Instrument Serif',Georgia,serif;
+      --font-mono:'DM Mono',monospace;
+      --font-sans:'Pretendard',system-ui,sans-serif;
+      --radius:4px;
+      --gospel:#2c5f8a; --disciple:#3d6b32; --calling:#8b4a2b;
+    }
+    [data-theme="dark"]{--ink:#f0ebe2;--paper:#141412;--cream:#1e1c19;--accent:#a8b88a;--accent2:#d4866a;--muted:#6a6460;--border:#2e2c28;--white:#1a1816;}
+    [data-theme="navy"]{--ink:#e8eaf0;--paper:#0d1117;--cream:#161b22;--accent:#58a6ff;--accent2:#f78166;--muted:#6e7681;--border:#30363d;--white:#13171f;}
+    [data-theme="rose"]{--ink:#2d1f24;--paper:#fdf0f2;--cream:#f7dde3;--accent:#c0576e;--accent2:#8b3a4e;--muted:#9a7880;--border:#e8c8cf;--white:#fff5f7;}
+    [data-theme="forest"]{--ink:#1c2416;--paper:#f0f4ec;--cream:#e2ebda;--accent:#3d6b32;--accent2:#8b5a2b;--muted:#7a8c72;--border:#c8d8be;--white:#f8fbf5;}
+    [data-theme="slate"]{--ink:#e2e8f0;--paper:#0f172a;--cream:#1e293b;--accent:#94a3b8;--accent2:#f59e0b;--muted:#64748b;--border:#334155;--white:#1e293b;}
+
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--paper);color:var(--ink);font-family:var(--font-sans);min-height:100vh;font-size:14px;transition:background .3s,color .3s;}
+
+    /* AUTH */
+    #auth-gate{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;}
+    .auth-logo{font-family:var(--font-serif);font-size:3rem;line-height:1;letter-spacing:-2px;margin-bottom:4px;}
+    .auth-sub{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:40px;}
+    .auth-box{width:100%;max-width:340px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:28px;}
+    .auth-label{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px;display:block;}
+    .auth-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-family:var(--font-mono);font-size:14px;outline:none;transition:border-color .15s;margin-bottom:16px;}
+    .auth-input:focus{border-color:var(--accent);}
+    .auth-err{font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:-8px;margin-bottom:12px;min-height:16px;}
+    .btn-enter{width:100%;padding:12px;background:var(--ink);color:var(--paper);border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;transition:opacity .15s;}
+    .btn-enter:hover{opacity:.8;}
+
+    /* APP */
+    #admin-app{display:none;flex-direction:column;min-height:100vh;}
+    .banner{height:120px;background:var(--cream);background-size:cover;background-position:center;position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+    .banner-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.35));display:flex;align-items:flex-end;padding:14px 20px;}
+    .banner-title{font-family:var(--font-serif);font-size:22px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
+    .banner-title span{font-style:italic;opacity:.8;font-size:14px;margin-left:8px;}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+    .top-bar-left{display:flex;align-items:center;gap:10px;}
+    .admin-badge{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;padding:3px 8px;border-radius:2px;background:var(--accent2);color:#fff;text-transform:uppercase;}
+    .top-bar-right{display:flex;gap:8px;}
+    .btn-sm{padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);background:none;cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);transition:all .15s;}
+    .btn-sm:hover{background:var(--cream);color:var(--ink);}
+    .btn-sm.danger:hover{border-color:var(--accent2);color:var(--accent2);}
+
+    .layout{display:flex;flex:1;}
+    .sidebar{width:200px;min-width:200px;background:var(--white);border-right:1px solid var(--border);padding:16px 0;position:sticky;top:49px;height:calc(100vh - 49px);overflow-y:auto;}
+    .sidebar-section{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:12px 16px 6px;}
+    .sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;color:var(--muted);font-size:13px;border-left:2px solid transparent;transition:all .15s;background:none;border-top:none;border-right:none;border-bottom:none;width:100%;text-align:left;font-family:var(--font-sans);}
+    .sidebar-item:hover{color:var(--ink);background:var(--cream);}
+    .sidebar-item.active{color:var(--ink);border-left-color:var(--accent);background:var(--cream);font-weight:500;}
+    .sidebar-item svg{width:15px;height:15px;flex-shrink:0;}
+    .content{flex:1;padding:24px;max-width:900px;overflow-x:hidden;}
+    .panel{display:none;}
+    .panel.active{display:block;}
+    .panel-title{font-family:var(--font-serif);font-size:26px;margin-bottom:4px;}
+    .panel-sub{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:24px;letter-spacing:.05em;}
+
+    .card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+    .card-title{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:14px;}
+    .form-row{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+    .form-group{flex:1;min-width:140px;}
+    label{display:block;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px;}
+    input[type=text],input[type=password],input[type=number],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:13px;outline:none;transition:border-color .15s;}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+    textarea{resize:vertical;min-height:72px;}
+    .btn-primary{padding:9px 20px;background:var(--ink);color:var(--paper);border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;transition:opacity .15s;}
+    .btn-primary:hover{opacity:.8;}
+    .btn-danger{padding:9px 20px;background:var(--accent2);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;transition:opacity .15s;}
+    .btn-danger:hover{opacity:.8;}
+    .btn-success{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;transition:opacity .15s;}
+    .btn-success:hover{opacity:.8;}
+
+    /* CURRICULUM IMPORT */
+    .curriculum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px;}
+    .curriculum-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px;background:var(--paper);cursor:pointer;transition:all .15s;}
+    .curriculum-card:hover{border-color:var(--accent);background:var(--cream);}
+    .curriculum-card.imported{border-color:var(--accent);background:rgba(107,124,78,.08);}
+    .curriculum-card-step{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+    .curriculum-card-step.s1{color:var(--gospel);}
+    .curriculum-card-step.s2{color:var(--disciple);}
+    .curriculum-card-step.s3{color:var(--calling);}
+    .curriculum-card-step.s4{color:var(--accent2);}
+    .curriculum-card-title{font-size:13px;font-weight:500;line-height:1.3;margin-bottom:4px;}
+    .curriculum-card-meta{font-size:11px;color:var(--muted);}
+    .curriculum-card-check{float:right;color:var(--accent);font-size:16px;display:none;}
+    .curriculum-card.imported .curriculum-card-check{display:block;}
+
+    /* BOOKS TABLE */
+    .data-table{width:100%;border-collapse:collapse;}
+    .data-table th{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);}
+    .data-table td{padding:10px;border-bottom:1px solid var(--border);font-size:13px;}
+    .data-table tr:last-child td{border-bottom:none;}
+    .data-table tr:hover td{background:var(--cream);}
+    .data-table .actions{display:flex;gap:6px;align-items:center;}
+
+    .school-pill{display:inline-block;padding:2px 8px;border-radius:2px;font-family:var(--font-mono);font-size:9px;letter-spacing:.05em;}
+    .school-pill.Gospel{background:#eef3f7;color:var(--gospel);}
+    .school-pill.Disciple{background:#f0f4ec;color:var(--disciple);}
+    .school-pill.Calling{background:#fdf3ee;color:var(--calling);}
+    .step-pill{display:inline-block;padding:2px 6px;border-radius:2px;font-family:var(--font-mono);font-size:9px;background:var(--cream);color:var(--muted);}
+
+    .pdf-input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:var(--font-mono);background:var(--paper);color:var(--ink);outline:none;}
+    .pdf-input:focus{border-color:var(--accent);}
+    .pdf-input.has-url{border-color:var(--accent);background:rgba(107,124,78,.05);}
+
+    /* FILTER BAR */
+    .filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+    .filter-tag{padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--muted);transition:all .15s;}
+    .filter-tag.active{border-color:var(--ink);background:var(--ink);color:var(--paper);}
+    .filter-tag.gospel.active{border-color:var(--gospel);background:var(--gospel);color:white;}
+    .filter-tag.disciple.active{border-color:var(--disciple);background:var(--disciple);color:white;}
+    .filter-tag.calling.active{border-color:var(--calling);background:var(--calling);color:white;}
+
+    /* STATS */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+    .stat-box{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;}
+    .stat-num{font-family:var(--font-serif);font-size:32px;line-height:1;letter-spacing:-1px;color:var(--accent);}
+    .stat-label{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:4px;}
+
+    /* THEME */
+    .theme-grid{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+    .theme-swatch-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+    .theme-swatch{width:48px;height:48px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .15s;}
+    .theme-swatch.active{border-color:var(--accent);transform:scale(1.1);}
+    .theme-swatch-label{font-family:var(--font-mono);font-size:9px;color:var(--muted);}
+
+    /* BANNER */
+    .upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px;}
+    .upload-zone:hover{border-color:var(--accent);background:var(--cream);}
+    .upload-zone-icon{font-size:2rem;margin-bottom:8px;}
+    .upload-zone-text{font-family:var(--font-mono);font-size:11px;color:var(--muted);}
+    .banner-preview{width:100%;height:100px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:10px;display:none;}
+
+    /* NOTICE */
+    .notice-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;background:var(--white);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+    .notice-date{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:4px;}
+
+    /* GROUP */
+    .group-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+    .group-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;background:var(--white);}
+    .group-chip-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:0;transition:color .15s;}
+    .group-chip-del:hover{color:var(--accent2);}
+
+    /* TOAST / MODAL */
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:20px;font-family:var(--font-mono);font-size:12px;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:999;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;}
+    .modal-bg.open{display:flex;}
+    .modal-box{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:340px;width:90%;animation:popIn .2s ease;}
+    @keyframes popIn{from{transform:scale(.93);opacity:0;}}
+    .modal-q{font-family:var(--font-serif);font-size:18px;margin-bottom:8px;}
+    .modal-desc{font-size:13px;color:var(--muted);margin-bottom:20px;}
+    .modal-btns{display:flex;gap:8px;}
+
+    /* INFO BOX */
+    .info-box{padding:10px 14px;border-radius:var(--radius);font-size:12px;border-left:3px solid var(--accent);background:rgba(107,124,78,.08);margin-bottom:12px;color:var(--muted);}
+
+    @media(max-width:640px){.sidebar{display:none;}.stats-row{grid-template-columns:1fr 1fr;}}
+  </style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-gate">
+  <div class="auth-logo">Admin</div>
+  <div class="auth-sub">Triple School Tracker</div>
+  <div class="auth-box">
+    <label class="auth-label">관리자 비밀번호</label>
+    <input type="password" class="auth-input" id="admin-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()" />
+    <div class="auth-err" id="auth-err"></div>
+    <button class="btn-enter" onclick="tryLogin()">Enter Admin</button>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="admin-app">
+
+  <div class="banner" id="top-banner">
+    <div class="banner-overlay">
+      <div class="banner-title">Triple School <span>Admin Console</span></div>
+    </div>
+  </div>
+
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <span style="font-family:var(--font-serif);font-size:15px;">Triple School</span>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <div class="top-bar-right">
+      <button class="btn-sm" onclick="syncAll()">동기화</button>
+      <button class="btn-sm danger" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="sidebar-section">Overview</div>
+      <button class="sidebar-item active" data-panel="dashboard" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        대시보드
+      </button>
+      <div class="sidebar-section">커리큘럼</div>
+      <button class="sidebar-item" data-panel="curriculum" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 8l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        커리큘럼 관리
+      </button>
+      <button class="sidebar-item" data-panel="books" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+        PDF 링크 관리
+      </button>
+      <div class="sidebar-section">콘텐츠</div>
+      <button class="sidebar-item" data-panel="notice" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        공지사항
+      </button>
+      <div class="sidebar-section">유저</div>
+      <button class="sidebar-item" data-panel="users" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        유저 관리
+      </button>
+      <button class="sidebar-item" data-panel="groups" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+        그룹 관리
+      </button>
+      <div class="sidebar-section">꾸미기</div>
+      <button class="sidebar-item" data-panel="theme" onclick="nav(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>
+        테마 & 이미지
+      </button>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="panel-title">대시보드</div>
+        <div class="panel-sub">Overview of Triple School reading tracker</div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-num" id="d-users">—</div><div class="stat-label">유저</div></div>
+          <div class="stat-box"><div class="stat-num" id="d-books">—</div><div class="stat-label">도서 (커리큘럼)</div></div>
+          <div class="stat-box"><div class="stat-num" id="d-records">—</div><div class="stat-label">완독 기록</div></div>
+          <div class="stat-box"><div class="stat-num" id="d-groups">—</div><div class="stat-label">그룹</div></div>
+        </div>
+
+        <!-- step breakdown -->
+        <div class="card">
+          <div class="card-title">Step별 진도 현황</div>
+          <div id="step-breakdown"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">최근 완독 기록</div>
+          <table class="data-table">
+            <thead><tr><th>유저</th><th>책</th><th>그룹</th><th>날짜</th></tr></thead>
+            <tbody id="recent-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CURRICULUM MANAGEMENT -->
+      <div class="panel" id="panel-curriculum">
+        <div class="panel-title">커리큘럼 관리</div>
+        <div class="panel-sub">Triple School 공식 도서 목록 — Step별 확인 및 커스텀 책 추가</div>
+
+        <div class="info-box">
+          📚 Triple School 공식 커리큘럼은 앱에 하드코딩되어 있어요. 유저가 Step을 선택하면 해당 Step의 책이 자동으로 보입니다. 아래에서 각 Step 책 현황을 확인하고 커스텀 책을 추가할 수 있어요.
+        </div>
+
+        <!-- step tabs -->
+        <div class="filter-row" id="curr-step-filter">
+          <button class="filter-tag active" data-step="all" onclick="setCurrStep(this,'all')">전체 All</button>
+          <button class="filter-tag" data-step="1" onclick="setCurrStep(this,1)">Step 1 · 초등 하</button>
+          <button class="filter-tag" data-step="2" onclick="setCurrStep(this,2)">Step 2 · 초등 상</button>
+          <button class="filter-tag" data-step="3" onclick="setCurrStep(this,3)">Step 3 · 중등</button>
+          <button class="filter-tag" data-step="4" onclick="setCurrStep(this,4)">Step 4 · 고등/성인</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-tag gospel active" data-course="all" onclick="setCurrCourse(this,'all')">전체</button>
+          <button class="filter-tag gospel" data-course="Gospel" onclick="setCurrCourse(this,'Gospel')">Gospel</button>
+          <button class="filter-tag disciple" data-course="Disciple" onclick="setCurrCourse(this,'Disciple')">Disciple</button>
+          <button class="filter-tag calling" data-course="Calling" onclick="setCurrCourse(this,'Calling')">Calling</button>
+        </div>
+
+        <div id="curriculum-stats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;"></div>
+
+        <div class="card" style="padding:16px;">
+          <table class="data-table" id="curr-table">
+            <thead><tr><th>Step</th><th>School</th><th>Subject</th><th>제목</th><th>저자</th></tr></thead>
+            <tbody id="curr-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- custom book add -->
+        <div class="card">
+          <div class="card-title">커스텀 책 추가</div>
+          <p class="info-box">커리큘럼에 없는 책을 추가할 수 있어요. 추가된 책은 해당 Step의 유저에게 보입니다.</p>
+          <div class="form-row">
+            <div class="form-group" style="max-width:80px;">
+              <label>Step</label>
+              <select id="c-step">
+                <option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4" selected>4</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>한국어 제목</label>
+              <input type="text" id="c-titleko" placeholder="" />
+            </div>
+            <div class="form-group">
+              <label>English Title</label>
+              <input type="text" id="c-title" placeholder="" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>School (Course)</label>
+              <select id="c-course">
+                <option value="Gospel">Gospel School</option>
+                <option value="Disciple">Disciple School</option>
+                <option value="Calling">Calling School</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject</label>
+              <select id="c-subject">
+                <option>Redemptive Perspective</option>
+                <option>Kingdom of God Perspective</option>
+                <option>Covenant Perspective</option>
+                <option>Godly Thoughts</option>
+                <option>Godly Behavior</option>
+                <option>Godly Life</option>
+                <option>Vision and Vocation</option>
+                <option>Evangelism and Mission</option>
+                <option>Church and the End</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>저자</label>
+              <input type="text" id="c-author" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>PDF URL (선택)</label>
+              <input type="text" id="c-pdf" placeholder="https://..." />
+            </div>
+          </div>
+          <button class="btn-primary" onclick="addCustomBook()">추가</button>
+        </div>
+      </div>
+
+      <!-- PDF LINK MANAGEMENT -->
+      <div class="panel" id="panel-books">
+        <div class="panel-title">PDF 링크 관리</div>
+        <div class="panel-sub">각 책에 무료 PDF 링크를 연결하세요 — 유저가 앱에서 바로 읽을 수 있어요</div>
+
+        <div class="info-box">
+          🔗 링크 입력 후 Enter 또는 다른 칸 클릭하면 자동 저장돼요. 저작권이 있는 책은 공식 무료 링크만 사용하세요.
+          <br>무료 링크 예시: <a href="https://www.gutenberg.org" target="_blank" style="color:var(--accent)">Project Gutenberg</a>,
+          <a href="https://archive.org" target="_blank" style="color:var(--accent)">Internet Archive</a>
+        </div>
+
+        <div class="filter-row">
+          <button class="filter-tag active" data-step="all" onclick="setPdfStep(this,'all')">전체</button>
+          <button class="filter-tag" data-step="1" onclick="setPdfStep(this,1)">Step 1</button>
+          <button class="filter-tag" data-step="2" onclick="setPdfStep(this,2)">Step 2</button>
+          <button class="filter-tag" data-step="3" onclick="setPdfStep(this,3)">Step 3</button>
+          <button class="filter-tag" data-step="4" onclick="setPdfStep(this,4)">Step 4</button>
+          <button class="filter-tag" data-step="linked" onclick="setPdfStep(this,'linked')">✓ 링크 있음</button>
+        </div>
+
+        <div class="card" style="padding:16px;">
+          <div id="pdf-count" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:12px;"></div>
+          <table class="data-table" id="pdf-table">
+            <thead><tr><th>Step</th><th>School</th><th>제목</th><th>저자</th><th style="min-width:260px;">PDF URL</th></tr></thead>
+            <tbody id="pdf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NOTICES -->
+      <div class="panel" id="panel-notice">
+        <div class="panel-title">공지사항</div>
+        <div class="panel-sub">Announcements shown to all users</div>
+        <div class="card">
+          <div class="card-title">새 공지 작성</div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>제목</label>
+            <input type="text" id="n-title" placeholder="이번 주 도서 안내" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>내용</label>
+            <textarea id="n-body" placeholder="이번 주는 ...을 읽습니다."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>대상 그룹</label>
+              <select id="n-group"><option value="">전체</option></select>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="postNotice()">공지 등록</button>
+        </div>
+        <div id="notice-list"></div>
+      </div>
+
+      <!-- USERS -->
+      <div class="panel" id="panel-users">
+        <div class="panel-title">유저 관리</div>
+        <div class="panel-sub">Change roles or remove users</div>
+        <div class="card" style="padding:12px 16px;">
+          <div style="display:flex;gap:8px;">
+            <select id="user-filter-group" onchange="renderUsers()" style="max-width:180px;">
+              <option value="">모든 그룹</option>
+            </select>
+            <select id="user-filter-role" onchange="renderUsers()" style="max-width:140px;">
+              <option value="">모든 역할</option>
+              <option>student</option><option>leader</option><option>admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead><tr><th>이름</th><th>그룹</th><th>Step</th><th>역할</th><th>완독</th><th></th></tr></thead>
+            <tbody id="user-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- GROUPS -->
+      <div class="panel" id="panel-groups">
+        <div class="panel-title">그룹 관리</div>
+        <div class="panel-sub">Add or remove community groups</div>
+        <div class="card">
+          <div class="card-title">현재 그룹</div>
+          <div class="group-list" id="group-list"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="new-group-input" placeholder="새 그룹 이름" style="max-width:220px;" onkeydown="if(event.key==='Enter')addGroup()" />
+            <button class="btn-primary" onclick="addGroup()">추가</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">그룹별 현황</div>
+          <table class="data-table">
+            <thead><tr><th>그룹</th><th>유저 수</th><th>완독 합계</th></tr></thead>
+            <tbody id="group-stat-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- THEME -->
+      <div class="panel" id="panel-theme">
+        <div class="panel-title">테마 & 이미지</div>
+        <div class="panel-sub">Customize the look of Triple School</div>
+        <div class="card">
+          <div class="card-title">컬러 테마</div>
+          <div class="theme-grid" id="theme-grid"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">배너 이미지</div>
+          <img id="banner-preview" class="banner-preview" alt="banner preview" />
+          <div class="upload-zone" onclick="document.getElementById('banner-file').click()">
+            <div class="upload-zone-icon">🖼️</div>
+            <div class="upload-zone-text">클릭하여 이미지 업로드<br><span style="font-size:10px;opacity:.6;">JPG, PNG, WEBP — 로컬 저장</span></div>
+          </div>
+          <input type="file" id="banner-file" accept="image/*" style="display:none" onchange="uploadBanner(this)" />
+          <button class="btn-sm danger" onclick="removeBanner()" style="margin-top:4px;">배너 제거</button>
+        </div>
+        <div class="card">
+          <div class="card-title">앱 이름 커스텀</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>앱 이름</label>
+              <input type="text" id="custom-appname" placeholder="Triple School" />
+            </div>
+            <div class="form-group">
+              <label>서브타이틀</label>
+              <input type="text" id="custom-subtitle" placeholder="독서 기록" />
+            </div>
+          </div>
+          <button class="btn-primary" onclick="saveAppName()">저장</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal-box">
+    <div class="modal-q" id="confirm-q">삭제하시겠어요?</div>
+    <div class="modal-desc" id="confirm-desc">이 작업은 되돌릴 수 없어요.</div>
+    <div class="modal-btns">
+      <button class="btn-sm" onclick="closeConfirm()">취소</button>
+      <button class="btn-danger" id="confirm-ok">삭제</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// CURRICULUM (same as index.html)
+// ═══════════════════════════════════════════
+const CURRICULUM=[
+  {id:'s1g1',step:1,course:'Gospel',subject:'Redemptive Perspective',title:"God's Great Plan Storybook Bible",author:'Cecilie Fodor',pdfUrl:''},
+  {id:'s1g2',step:1,course:'Gospel',subject:'Redemptive Perspective',title:'Joseph With God',author:'Jiyoung Lee',pdfUrl:''},
+  {id:'s1g3',step:1,course:'Gospel',subject:'Redemptive Perspective',title:'The Way of Salvation ABC',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1g4',step:1,course:'Gospel',subject:'Kingdom of God Perspective',title:'The Gospel Story Bible',author:'Marty Machowski',pdfUrl:''},
+  {id:'s1g5',step:1,course:'Gospel',subject:'Kingdom of God Perspective',title:'The Promise',author:'Carine McKenzie',pdfUrl:''},
+  {id:'s1d1',step:1,course:'Disciple',subject:'Godly Thoughts',title:'The Ten Faith Stepping-stone',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d2',step:1,course:'Disciple',subject:'Godly Thoughts',title:'The Ology',author:'Marty Machowski',pdfUrl:''},
+  {id:'s1d3',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 1. My Most Important Thing',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d4',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 2. Who is the Main Character in the Bible?',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d5',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 3. God Three in One',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d6',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 4. Whole World Created for Jesus',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d7',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 5. The Creation of Man and Woman',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d8',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 6. I Want it My Way!',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d9',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 7. Wait, God became a Man?',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d10',step:1,course:'Disciple',subject:'Godly Thoughts',title:'Jesus is Christ 8. Jesus is my Christ',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1d11',step:1,course:'Disciple',subject:'Godly Behavior',title:"Jesus is Christ 9. I am God's Temple",author:'Sue Kim',pdfUrl:''},
+  {id:'s1d12',step:1,course:'Disciple',subject:'Godly Behavior',title:"Jesus is Christ 10. God's Greatest Masterpiece",author:'Sukyung Kim',pdfUrl:''},
+  {id:'s1d13',step:1,course:'Disciple',subject:'Godly Life',title:"The Lord's Prayer for Young Children",author:'Eunkyeong Seo',pdfUrl:''},
+  {id:'s1d14',step:1,course:'Disciple',subject:'Godly Life',title:"The Apostle's Creed for Young Children",author:'Eunkyeong Seo',pdfUrl:''},
+  {id:'s1d15',step:1,course:'Disciple',subject:'Godly Life',title:'The Ten Commandments for Young Children',author:'Eunkyeong Seo',pdfUrl:''},
+  {id:'s1c1',step:1,course:'Calling',subject:'Vision and Vocation',title:"100 People of Faith who enlightened God's Kingdom",author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s1c2',step:1,course:'Calling',subject:'Vision and Vocation',title:'The Dream of Covenant Set. Abraham',author:'Eunju Choi',pdfUrl:''},
+  {id:'s1c3',step:1,course:'Calling',subject:'Vision and Vocation',title:'The Dream of Covenant Set, Moses',author:'Jiyoung Lee/Oiyoung Yu',pdfUrl:''},
+  {id:'s1c4',step:1,course:'Calling',subject:'Evangelism and Mission',title:'Sex Education in The Bible',author:'IM BOOKS',pdfUrl:''},
+  {id:'s1c5',step:1,course:'Calling',subject:'Church and the End',title:'God Made Boys and Girls',author:'Marty Machowski',pdfUrl:''},
+  {id:'s1c6',step:1,course:'Calling',subject:'Church and the End',title:'Dinosaurs of Eden',author:'Ken Ham',pdfUrl:''},
+  {id:'s2g1',step:2,course:'Gospel',subject:'Redemptive Perspective',title:'14 Days of The Old Testament Journey',author:'IM BOOKS',pdfUrl:''},
+  {id:'s2g2',step:2,course:'Gospel',subject:'Redemptive Perspective',title:'Main Characters of 66 Books of the Bible, Praise Jesus',author:'Oiyoung Yu',pdfUrl:''},
+  {id:'s2g3',step:2,course:'Gospel',subject:'Redemptive Perspective',title:'What? I Can Read the Bible The Old Testament Episode: The Comic',author:'Aesil Lee',pdfUrl:''},
+  {id:'s2g4',step:2,course:'Gospel',subject:'Redemptive Perspective',title:'What? I can Read the Bible The New Testament Episode: The Comic',author:'Aesil Lee',pdfUrl:''},
+  {id:'s2g5',step:2,course:'Gospel',subject:'Kingdom of God Perspective',title:'The Story of The Kingdom of God',author:'IM BOOKS',pdfUrl:''},
+  {id:'s2g6',step:2,course:'Gospel',subject:'Kingdom of God Perspective',title:"Salvation and God's Plan: The Comic",author:'Namjun Kim',pdfUrl:''},
+  {id:'s2g7',step:2,course:'Gospel',subject:'Covenant Perspective',title:'The Promise',author:'IM BOOKS',pdfUrl:''},
+  {id:'s2d1',step:2,course:'Disciple',subject:'Godly Thoughts',title:"The Apostle's Creed: The Comic",author:'Geumsan Baek',pdfUrl:''},
+  {id:'s2d2',step:2,course:'Disciple',subject:'Godly Thoughts',title:'The Ten Commandments: The Comic',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s2d3',step:2,course:'Disciple',subject:'Godly Behavior',title:"The Lord's Prayer: The Comic",author:'Geumsan Baek',pdfUrl:''},
+  {id:'s2d4',step:2,course:'Disciple',subject:'Godly Behavior',title:"The Way the People of God's Kingdom Live",author:'IM BOOKS',pdfUrl:''},
+  {id:'s2d5',step:2,course:'Disciple',subject:'Godly Life',title:"The Pilgrim's Progress in One Breath",author:'Hongman Kim',pdfUrl:''},
+  {id:'s2d6',step:2,course:'Disciple',subject:'Godly Life',title:'A Faulty Faith of A Good Christian for Kids',author:'IM BOOKS',pdfUrl:''},
+  {id:'s2c1',step:2,course:'Calling',subject:'Vision and Vocation',title:'The Family for Children',author:'Namjun Kim',pdfUrl:''},
+  {id:'s2c2',step:2,course:'Calling',subject:'Vision and Vocation',title:'Ten Boys Who Changed The World',author:'Irene Howat',pdfUrl:''},
+  {id:'s2c3',step:2,course:'Calling',subject:'Vision and Vocation',title:'Ten Boys Who Made History',author:'Irene Howat',pdfUrl:''},
+  {id:'s2c4',step:2,course:'Calling',subject:'Evangelism and Mission',title:'A Great Missionary',author:'David Shivley',pdfUrl:''},
+  {id:'s2c5',step:2,course:'Calling',subject:'Church and the End',title:'Church Handbook',author:'Dukjong Kim',pdfUrl:''},
+  {id:'s2c6',step:2,course:'Calling',subject:'Church and the End',title:'Before You Say There is No God',author:'Youngduk Park',pdfUrl:''},
+  {id:'s2c7',step:2,course:'Calling',subject:'Church and the End',title:'Guide to Creation',author:'Institute for Creation Research',pdfUrl:''},
+  {id:'s3g1',step:3,course:'Gospel',subject:'Redemptive Perspective',title:'14 Days of The Old Testament Journey',author:'IM BOOKS',pdfUrl:''},
+  {id:'s3g2',step:3,course:'Gospel',subject:'Redemptive Perspective',title:'Newly Met Salvation History',author:'IM BOOKS',pdfUrl:''},
+  {id:'s3g3',step:3,course:'Gospel',subject:'Redemptive Perspective',title:'The Comic Bible Overview – Old Testament',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s3g4',step:3,course:'Gospel',subject:'Kingdom of God Perspective',title:"The Story of God's Kingdom",author:'IM BOOKS',pdfUrl:''},
+  {id:'s3g5',step:3,course:'Gospel',subject:'Covenant Perspective',title:'The Promise',author:'IM BOOKS',pdfUrl:''},
+  {id:'s3g6',step:3,course:'Gospel',subject:'Covenant Perspective',title:'What Does it Mean to Be Born Again?',author:'R. C. Sproul',pdfUrl:''},
+  {id:'s3g7',step:3,course:'Gospel',subject:'Covenant Perspective',title:'The Christ of Christmas',author:'James Montgomery Boice',pdfUrl:''},
+  {id:'s3d1',step:3,course:'Disciple',subject:'Godly Thoughts',title:'The Comic Westminster Shorter Catechism 1',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s3d2',step:3,course:'Disciple',subject:'Godly Thoughts',title:'The Comic Westminster Shorter Catechism 2',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s3d3',step:3,course:'Disciple',subject:'Godly Thoughts',title:'Consider Jesus',author:'Octavius Winslow',pdfUrl:''},
+  {id:'s3d4',step:3,course:'Disciple',subject:'Godly Thoughts',title:'Guarding Your Heart',author:'Arthur Pink',pdfUrl:''},
+  {id:'s3d5',step:3,course:'Disciple',subject:'Godly Behavior',title:"The Way the People of God's Kingdom Live",author:'IM BOOKS',pdfUrl:''},
+  {id:'s3d6',step:3,course:'Disciple',subject:'Godly Behavior',title:'Life Principles of Christians',author:'IM BOOKS',pdfUrl:''},
+  {id:'s3d7',step:3,course:'Disciple',subject:'Godly Behavior',title:'What Would Jesus Do?',author:'Charles Sheldon',pdfUrl:''},
+  {id:'s3d8',step:3,course:'Disciple',subject:'Godly Life',title:'The Comic Jonathan Edwards',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s3d9',step:3,course:'Disciple',subject:'Godly Life',title:'The Comic Lloyd Jones',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s3d10',step:3,course:'Disciple',subject:'Godly Life',title:'Let Us Pray',author:'John MacArthur/John Piper',pdfUrl:''},
+  {id:'s3c1',step:3,course:'Calling',subject:'Vision and Vocation',title:"Raising Children God's Way",author:'Martyn Lloyd-Jones',pdfUrl:''},
+  {id:'s3c2',step:3,course:'Calling',subject:'Vision and Vocation',title:'Work and Our Labor in the Lord',author:'James Hamilton',pdfUrl:''},
+  {id:'s3c3',step:3,course:'Calling',subject:'Evangelism and Mission',title:"The Comic Apostle's Creed 1",author:'Muhyun Lee',pdfUrl:''},
+  {id:'s3c4',step:3,course:'Calling',subject:'Evangelism and Mission',title:'Our Guilty Silence',author:'John Stott',pdfUrl:''},
+  {id:'s3c5',step:3,course:'Calling',subject:'Church and the End',title:'Ecclesiology: The Comics',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s3c6',step:3,course:'Calling',subject:'Church and the End',title:'Eschatology: The Comics',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s3c7',step:3,course:'Calling',subject:'Church and the End',title:'The Screwtape Letters',author:'C. S. Lewis',pdfUrl:''},
+  {id:'s4g1',step:4,course:'Gospel',subject:'Redemptive Perspective',title:'Saved From What?',author:'R. C. Sproul',pdfUrl:''},
+  {id:'s4g2',step:4,course:'Gospel',subject:'Redemptive Perspective',title:'The Gospel As Center',author:'D. A. Carson / Timothy Keller',pdfUrl:''},
+  {id:'s4g3',step:4,course:'Gospel',subject:'Redemptive Perspective',title:'Jesus On Every Page',author:'David Murray',pdfUrl:''},
+  {id:'s4g4',step:4,course:'Gospel',subject:'Kingdom of God Perspective',title:'Gospel and Kingdom',author:'Graeme Goldsworthy',pdfUrl:''},
+  {id:'s4g5',step:4,course:'Gospel',subject:'Covenant Perspective',title:'The Promises of GOD',author:'R. C. Sproul',pdfUrl:''},
+  {id:'s4g6',step:4,course:'Gospel',subject:'Covenant Perspective',title:"Can I Be Sure I'm Saved?",author:'R. C. Sproul',pdfUrl:''},
+  {id:'s4d1',step:4,course:'Disciple',subject:'Godly Thoughts',title:'Seeing Christ In The Tabernacle',author:'Ervin. N. Hershberger',pdfUrl:''},
+  {id:'s4d2',step:4,course:'Disciple',subject:'Godly Thoughts',title:'Essential Truths of the Christian Faith',author:'R. C. Sproul',pdfUrl:''},
+  {id:'s4d3',step:4,course:'Disciple',subject:'Godly Thoughts',title:'Saving Faith',author:'Arthur Pink',pdfUrl:''},
+  {id:'s4d4',step:4,course:'Disciple',subject:'Godly Thoughts',title:'Seven Words from The Cross',author:'Namjun Kim',pdfUrl:''},
+  {id:'s4d5',step:4,course:'Disciple',subject:'Godly Behavior',title:'The Holy Spirit',author:'R. C. Sproul',pdfUrl:''},
+  {id:'s4d6',step:4,course:'Disciple',subject:'Godly Behavior',title:'Godly Self-Control',author:'A. T. Pierson',pdfUrl:''},
+  {id:'s4d7',step:4,course:'Disciple',subject:'Godly Behavior',title:'The Freedom of Self-Forgetfulness',author:'Timothy Keller',pdfUrl:''},
+  {id:'s4d8',step:4,course:'Disciple',subject:'Godly Behavior',title:'The Practice of Piety',author:'Lewis Bayly',pdfUrl:''},
+  {id:'s4d9',step:4,course:'Disciple',subject:'Godly Life',title:'Stop Trying To Live For Jesus',author:'Charles Price',pdfUrl:''},
+  {id:'s4d10',step:4,course:'Disciple',subject:'Godly Life',title:"The Pilgrim's Progress Explained",author:'Hongman Kim',pdfUrl:'https://www.gutenberg.org/ebooks/131'},
+  {id:'s4d11',step:4,course:'Disciple',subject:'Godly Life',title:'The Life and Diary of David Brainerd',author:'Jonathan Edwards',pdfUrl:''},
+  {id:'s4c1',step:4,course:'Calling',subject:'Vision and Vocation',title:"Don't Waste Your Life",author:'John Piper',pdfUrl:''},
+  {id:'s4c2',step:4,course:'Calling',subject:'Vision and Vocation',title:'Household Salvation',author:'Namjun Kim',pdfUrl:''},
+  {id:'s4c3',step:4,course:'Calling',subject:'Vision and Vocation',title:'Every Good Endeavor',author:'Timothy Keller',pdfUrl:''},
+  {id:'s4c4',step:4,course:'Calling',subject:'Vision and Vocation',title:'Living in The Light: Money, Sex and Power',author:'John Piper',pdfUrl:''},
+  {id:'s4c5',step:4,course:'Calling',subject:'Evangelism and Mission',title:'Christian Mission in the Modern World',author:'John Stott',pdfUrl:''},
+  {id:'s4c6',step:4,course:'Calling',subject:'Evangelism and Mission',title:'Perspectives On The Christian Movement: Reader',author:'Ralph Winter',pdfUrl:''},
+  {id:'s4c7',step:4,course:'Calling',subject:'Evangelism and Mission',title:'From Jerusalem to Irian Jaya',author:'Ruth Tucker',pdfUrl:''},
+  {id:'s4c8',step:4,course:'Calling',subject:'Church and the End',title:'The Comic History of the Early Church 1',author:'Yohan Seo',pdfUrl:''},
+  {id:'s4c9',step:4,course:'Calling',subject:'Church and the End',title:'The Comic History of the Early Church 2',author:'Yohan Seo',pdfUrl:''},
+  {id:'s4c10',step:4,course:'Calling',subject:'Church and the End',title:"Church and Remaining Christ's Suffering",author:'Namjun Kim',pdfUrl:''},
+  {id:'s4c11',step:4,course:'Calling',subject:'Church and the End',title:'The Comic Revelation 1',author:'Geumsan Baek',pdfUrl:''},
+  {id:'s4c12',step:4,course:'Calling',subject:'Church and the End',title:'The Universe Next Door: A Basic Worldview Catalog',author:'James Sire',pdfUrl:''},
+];
+
+// ═══════════════════════════════════════════
+// CONFIG & STATE
+// ═══════════════════════════════════════════
+const ADMIN_PASSWORD='1234';
+const LS_KEY='triple_v1'; const ADM_KEY='triple_admin';
+
+let S={
+  users:[],books:[],records:[],
+  notices:[],groups:['Blinn Intogen','Renewgen','Teachers','Other'],
+  theme:'default',banner:null,appName:'Triple School',appSub:'독서 기록',
+  pdfOverrides:{},  // { bookId: url }
+};
+let currStepFilter='all', currCourseFilter='all', pdfStepFilter='all';
+
+function loadAll(){
+  try{
+    const main=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    if(main.users)   S.users=main.users;
+    if(main.books)   S.books=main.books;
+    if(main.records) S.records=main.records;
+    const adm=JSON.parse(localStorage.getItem(ADM_KEY)||'{}');
+    if(adm.notices)      S.notices=adm.notices;
+    if(adm.groups)       S.groups=adm.groups;
+    if(adm.theme)        S.theme=adm.theme;
+    if(adm.banner)       S.banner=adm.banner;
+    if(adm.appName)      S.appName=adm.appName;
+    if(adm.appSub)       S.appSub=adm.appSub;
+    if(adm.pdfOverrides) S.pdfOverrides=adm.pdfOverrides;
+  }catch(e){}
+}
+function saveAdm(){
+  localStorage.setItem(ADM_KEY,JSON.stringify({
+    notices:S.notices,groups:S.groups,theme:S.theme,banner:S.banner,
+    appName:S.appName,appSub:S.appSub,pdfOverrides:S.pdfOverrides,
+  }));
+}
+function saveMain(){
+  const main=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+  localStorage.setItem(LS_KEY,JSON.stringify({...main,users:S.users,books:S.books,records:S.records}));
+}
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+function tryLogin(){
+  const pw=document.getElementById('admin-pw').value;
+  if(pw===ADMIN_PASSWORD){
+    document.getElementById('auth-gate').style.display='none';
+    const app=document.getElementById('admin-app');
+    app.style.display='flex'; app.style.flexDirection='column';
+    initApp();
+  } else {
+    document.getElementById('auth-err').textContent='비밀번호가 틀렸어요.';
+    document.getElementById('admin-pw').value='';
+  }
+}
+document.getElementById('admin-pw').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
+function doLogout(){location.reload();}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+function initApp(){
+  loadAll();
+  applyTheme(S.theme); applyBanner(S.banner); applyAppName();
+  renderDashboard(); renderThemeGrid();
+  populateGroupSelects(); renderGroupList(); renderGroupStats();
+  renderUsers(); renderCurriculum(); renderPdfTable(); renderNotices();
+  if(window.__firebaseReady) syncAll();
+}
+
+// ═══════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════
+function nav(el){
+  document.querySelectorAll('.sidebar-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+el.dataset.panel).classList.add('active');
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard(){
+  document.getElementById('d-users').textContent=S.users.length;
+  document.getElementById('d-books').textContent=CURRICULUM.length+'+'+S.books.length;
+  document.getElementById('d-records').textContent=S.records.length;
+  document.getElementById('d-groups').textContent=S.groups.length;
+
+  // step breakdown
+  const steps=[1,2,3,4];
+  const stepNames={1:'Step 1 초등 하',2:'Step 2 초등 상',3:'Step 3 중등',4:'Step 4 고등/성인'};
+  let html='';
+  steps.forEach(s=>{
+    const stepUsers=S.users.filter(u=>u.step===s);
+    const stepBooks=CURRICULUM.filter(b=>b.step===s);
+    const totalRecs=stepUsers.reduce((acc,u)=>{
+      return acc+S.records.filter(r=>r.userId===u.id&&stepBooks.some(b=>b.id===r.bookId)).length;
+    },0);
+    const maxPossible=stepUsers.length*stepBooks.length||1;
+    const pct=Math.round(totalRecs/maxPossible*100);
+    html+=`<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+        <span style="font-weight:500;">${stepNames[s]}</span>
+        <span style="font-family:var(--font-mono);color:var(--muted);">${stepUsers.length}명 · ${stepBooks.length}권</span>
+      </div>
+      <div style="height:6px;background:var(--cream);border-radius:3px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;transition:width .5s;"></div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('step-breakdown').innerHTML=html;
+
+  const recent=[...S.records].reverse().slice(0,10);
+  document.getElementById('recent-body').innerHTML=recent.map(r=>{
+    const u=S.users.find(u=>u.id===r.userId);
+    const b=CURRICULUM.find(b=>b.id===r.bookId)||S.books.find(b=>b.id===r.bookId);
+    return `<tr>
+      <td>${esc(u?.name||'?')}</td>
+      <td>${esc(b?.title||'?')}</td>
+      <td>${esc(u?.group||'?')}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;">${r.date||''}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px;">기록 없음</td></tr>';
+}
+
+// ═══════════════════════════════════════════
+// CURRICULUM TABLE
+// ═══════════════════════════════════════════
+function setCurrStep(el,step){
+  document.querySelectorAll('#curr-step-filter .filter-tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); currStepFilter=step; renderCurriculum();
+}
+function setCurrCourse(el,course){
+  document.querySelectorAll('[data-course]').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); currCourseFilter=course; renderCurriculum();
+}
+
+function renderCurriculum(){
+  let books=CURRICULUM;
+  if(currStepFilter!=='all') books=books.filter(b=>b.step===Number(currStepFilter));
+  if(currCourseFilter!=='all') books=books.filter(b=>b.course===currCourseFilter);
+
+  // stats
+  const statsEl=document.getElementById('curriculum-stats');
+  const steps=[1,2,3,4];
+  statsEl.innerHTML=steps.map(s=>{
+    const cnt=CURRICULUM.filter(b=>b.step===s).length;
+    return `<div style="padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font-mono);font-size:11px;">
+      <span style="color:var(--muted);">Step ${s}</span>&nbsp;<strong>${cnt}권</strong>
+    </div>`;
+  }).join('');
+
+  document.getElementById('curr-tbody').innerHTML=books.map(b=>`
+    <tr>
+      <td><span class="step-pill">Step ${b.step}</span></td>
+      <td><span class="school-pill ${b.course}">${b.course}</span></td>
+      <td style="font-size:11px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;">${esc(b.subject)}</td>
+      <td style="font-weight:500;">${esc(b.title)}</td>
+      <td style="font-size:12px;color:var(--muted);">${esc(b.author||'')}</td>
+    </tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">결과 없음</td></tr>';
+}
+
+// ═══════════════════════════════════════════
+// CUSTOM BOOK ADD
+// ═══════════════════════════════════════════
+function addCustomBook(){
+  const step=parseInt(document.getElementById('c-step').value);
+  const titleko=document.getElementById('c-titleko').value.trim();
+  const title=document.getElementById('c-title').value.trim();
+  const course=document.getElementById('c-course').value;
+  const subject=document.getElementById('c-subject').value;
+  const author=document.getElementById('c-author').value.trim();
+  const pdfUrl=document.getElementById('c-pdf').value.trim();
+  if(!titleko&&!title){toast('제목을 입력하세요');return;}
+  const book={id:uid(),step,titleKo:titleko,title:title||titleko,course,subject,author,pdfUrl};
+  S.books.push(book);
+  saveMain();
+  if(window.__firebaseReady) fsSet('books',book.id,book);
+  renderDashboard(); toast('추가됐어 ✓');
+  ['c-titleko','c-title','c-author','c-pdf'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ═══════════════════════════════════════════
+// PDF TABLE
+// ═══════════════════════════════════════════
+function setPdfStep(el,step){
+  document.querySelectorAll('#panel-books .filter-tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); pdfStepFilter=step; renderPdfTable();
+}
+
+function renderPdfTable(){
+  let books=CURRICULUM;
+  if(pdfStepFilter==='linked') books=books.filter(b=>(S.pdfOverrides[b.id]||b.pdfUrl));
+  else if(pdfStepFilter!=='all') books=books.filter(b=>b.step===Number(pdfStepFilter));
+
+  const linked=CURRICULUM.filter(b=>S.pdfOverrides[b.id]||b.pdfUrl).length;
+  document.getElementById('pdf-count').textContent=`전체 ${CURRICULUM.length}권 중 ${linked}권 PDF 연결됨`;
+
+  document.getElementById('pdf-tbody').innerHTML=books.map(b=>{
+    const currentUrl=S.pdfOverrides[b.id]||b.pdfUrl||'';
+    const hasUrl=!!currentUrl;
+    return `<tr>
+      <td><span class="step-pill">Step ${b.step}</span></td>
+      <td><span class="school-pill ${b.course}">${b.course}</span></td>
+      <td style="font-weight:500;font-size:13px;">${esc(b.title)}</td>
+      <td style="font-size:11px;color:var(--muted);">${esc(b.author||'')}</td>
+      <td>
+        <input class="pdf-input ${hasUrl?'has-url':''}"
+          type="text"
+          value="${esc(currentUrl)}"
+          placeholder="https://..."
+          data-id="${b.id}"
+          onchange="savePdfUrl('${b.id}',this)"
+          onblur="savePdfUrl('${b.id}',this)"
+        />
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function savePdfUrl(bookId,input){
+  const url=input.value.trim();
+  if(url) {
+    S.pdfOverrides[bookId]=url;
+    input.classList.add('has-url');
+  } else {
+    delete S.pdfOverrides[bookId];
+    input.classList.remove('has-url');
+  }
+  saveAdm();
+  // update pdf-count
+  const linked=CURRICULUM.filter(b=>S.pdfOverrides[b.id]||b.pdfUrl).length;
+  document.getElementById('pdf-count').textContent=`전체 ${CURRICULUM.length}권 중 ${linked}권 PDF 연결됨`;
+}
+
+// ═══════════════════════════════════════════
+// NOTICES
+// ═══════════════════════════════════════════
+function renderNotices(){
+  const container=document.getElementById('notice-list');
+  container.innerHTML=S.notices.length
+    ?S.notices.map((n,i)=>`
+      <div class="notice-card">
+        <div>
+          <div style="font-weight:600;margin-bottom:4px;">${esc(n.title)}</div>
+          <div style="font-size:13px;">${esc(n.body)}</div>
+          <div class="notice-date">${n.group?'대상: '+esc(n.group):'전체'} · ${n.date}</div>
+        </div>
+        <button class="btn-sm danger" onclick="deleteNotice(${i})">삭제</button>
+      </div>`).join('')
+    :'<div style="color:var(--muted);font-size:13px;padding:16px 0;">공지사항 없음</div>';
+}
+function postNotice(){
+  const title=document.getElementById('n-title').value.trim();
+  const body=document.getElementById('n-body').value.trim();
+  const group=document.getElementById('n-group').value;
+  if(!title||!body){toast('제목과 내용을 입력하세요');return;}
+  S.notices.unshift({title,body,group,date:today()});
+  saveAdm(); renderNotices(); toast('공지 등록됨 ✓');
+  document.getElementById('n-title').value='';
+  document.getElementById('n-body').value='';
+}
+function deleteNotice(i){S.notices.splice(i,1);saveAdm();renderNotices();toast('삭제됨');}
+
+// ═══════════════════════════════════════════
+// USERS
+// ═══════════════════════════════════════════
+function renderUsers(){
+  const fg=document.getElementById('user-filter-group').value;
+  const fr=document.getElementById('user-filter-role').value;
+  let users=[...S.users];
+  if(fg) users=users.filter(u=>u.group===fg);
+  if(fr) users=users.filter(u=>u.role===fr);
+
+  document.getElementById('user-tbody').innerHTML=users.map(u=>{
+    const recCount=S.records.filter(r=>r.userId===u.id).length;
+    return `<tr>
+      <td style="font-weight:500;">${esc(u.name)}</td>
+      <td style="font-size:12px;color:var(--muted);">${esc(u.group||'')}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;">Step ${u.step||'?'}</td>
+      <td>
+        <select onchange="changeRole('${u.id}',this.value)" style="width:auto;padding:4px 8px;font-size:12px;">
+          <option ${u.role==='student'?'selected':''}>student</option>
+          <option ${u.role==='leader'?'selected':''}>leader</option>
+          <option ${u.role==='admin'?'selected':''}>admin</option>
+        </select>
+      </td>
+      <td style="font-family:var(--font-mono);color:var(--accent);">${recCount}</td>
+      <td><button class="btn-sm danger" onclick="confirmDelete('user','${u.id}','${esc(u.name)}')">삭제</button></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">유저 없음</td></tr>';
+}
+function changeRole(userId,newRole){
+  const u=S.users.find(u=>u.id===userId);
+  if(!u) return;
+  u.role=newRole; saveMain();
+  if(window.__firebaseReady) fsSet('users',userId,u);
+  toast(`${u.name} → ${newRole}`);
+}
+function deleteUser(id){
+  S.users=S.users.filter(u=>u.id!==id);
+  S.records=S.records.filter(r=>r.userId!==id);
+  saveMain();
+  if(window.__firebaseReady) fsDel('users',id);
+  renderUsers(); renderDashboard(); toast('유저 삭제됨');
+}
+
+// ═══════════════════════════════════════════
+// GROUPS
+// ═══════════════════════════════════════════
+function renderGroupList(){
+  document.getElementById('group-list').innerHTML=S.groups.map(g=>`
+    <div class="group-chip">${esc(g)}
+      <button class="group-chip-del" onclick="deleteGroup('${esc(g)}')">×</button>
+    </div>`).join('');
+}
+function renderGroupStats(){
+  document.getElementById('group-stat-tbody').innerHTML=S.groups.map(g=>{
+    const members=S.users.filter(u=>u.group===g).length;
+    const recs=S.records.filter(r=>S.users.find(u=>u.id===r.userId&&u.group===g)).length;
+    return `<tr>
+      <td style="font-weight:500;">${esc(g)}</td>
+      <td style="font-family:var(--font-mono);">${members}</td>
+      <td style="font-family:var(--font-mono);color:var(--accent);">${recs}</td>
+    </tr>`;
+  }).join('');
+}
+function populateGroupSelects(){
+  ['n-group','user-filter-group'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const base=id==='n-group'?'<option value="">전체</option>':'<option value="">모든 그룹</option>';
+    el.innerHTML=base+S.groups.map(g=>`<option>${esc(g)}</option>`).join('');
+  });
+}
+function addGroup(){
+  const name=document.getElementById('new-group-input').value.trim();
+  if(!name||S.groups.includes(name)){toast('이미 있거나 빈 이름');return;}
+  S.groups.push(name);
+  saveAdm(); populateGroupSelects(); renderGroupList(); renderGroupStats(); toast('그룹 추가됨 ✓');
+  document.getElementById('new-group-input').value='';
+}
+function deleteGroup(name){
+  S.groups=S.groups.filter(g=>g!==name);
+  saveAdm(); populateGroupSelects(); renderGroupList(); renderGroupStats(); toast('그룹 삭제됨');
+}
+
+// ═══════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════
+const THEMES=[
+  {id:'default',label:'오리지널',bg:'#f5f2eb',accent:'#6b7c4e'},
+  {id:'dark',label:'다크',bg:'#141412',accent:'#a8b88a'},
+  {id:'navy',label:'네이비',bg:'#0d1117',accent:'#58a6ff'},
+  {id:'rose',label:'로즈',bg:'#fdf0f2',accent:'#c0576e'},
+  {id:'forest',label:'포레스트',bg:'#f0f4ec',accent:'#3d6b32'},
+  {id:'slate',label:'슬레이트',bg:'#0f172a',accent:'#94a3b8'},
+];
+function renderThemeGrid(){
+  document.getElementById('theme-grid').innerHTML=THEMES.map(t=>`
+    <div class="theme-swatch-wrap">
+      <div class="theme-swatch ${S.theme===t.id?'active':''}"
+        style="background:linear-gradient(135deg,${t.bg} 50%,${t.accent} 50%);"
+        onclick="selectTheme('${t.id}')"></div>
+      <div class="theme-swatch-label">${t.label}</div>
+    </div>`).join('');
+}
+function selectTheme(id){S.theme=id;applyTheme(id);saveAdm();renderThemeGrid();toast('테마 변경됨 ✓');}
+function applyTheme(id){document.documentElement.setAttribute('data-theme',id==='default'?'':id);}
+
+function uploadBanner(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{S.banner=e.target.result;saveAdm();applyBanner(S.banner);toast('배너 적용됨 ✓');};
+  reader.readAsDataURL(file);
+}
+function applyBanner(dataUrl){
+  const banner=document.getElementById('top-banner');
+  const preview=document.getElementById('banner-preview');
+  if(dataUrl){banner.style.backgroundImage=`url(${dataUrl})`;banner.style.backgroundSize='cover';preview.src=dataUrl;preview.style.display='block';}
+  else{banner.style.backgroundImage='';preview.style.display='none';}
+}
+function removeBanner(){S.banner=null;saveAdm();applyBanner(null);toast('배너 제거됨');document.getElementById('banner-file').value='';}
+
+function saveAppName(){
+  S.appName=document.getElementById('custom-appname').value.trim()||'Triple School';
+  S.appSub=document.getElementById('custom-subtitle').value.trim()||'독서 기록';
+  saveAdm(); applyAppName(); toast('저장됨 ✓');
+}
+function applyAppName(){
+  document.querySelector('.banner-title').innerHTML=`${esc(S.appName)} <span>${esc(S.appSub)}</span>`;
+  document.getElementById('custom-appname').value=S.appName;
+  document.getElementById('custom-subtitle').value=S.appSub;
+}
+
+// ═══════════════════════════════════════════
+// CONFIRM
+// ═══════════════════════════════════════════
+let _confirmCb=null;
+function confirmDelete(type,id,name){
+  const labels={user:'유저'};
+  document.getElementById('confirm-q').textContent=`${labels[type]||type}을 삭제할까요?`;
+  document.getElementById('confirm-desc').textContent=`"${name}" — 되돌릴 수 없어요.`;
+  document.getElementById('confirm-modal').classList.add('open');
+  _confirmCb=()=>{
+    if(type==='user') deleteUser(id);
+    closeConfirm();
+  };
+  document.getElementById('confirm-ok').onclick=_confirmCb;
+}
+function closeConfirm(){document.getElementById('confirm-modal').classList.remove('open');_confirmCb=null;}
+
+// ═══════════════════════════════════════════
+// FIREBASE
+// ═══════════════════════════════════════════
+async function syncAll(){
+  if(!window.__firebaseReady){toast('Firebase 미연결');return;}
+  try{
+    const{collection:col,getDocs}=window.__fs;
+    const[us,bs,rs]=await Promise.all([
+      getDocs(col(window.__db,'users')),
+      getDocs(col(window.__db,'books')),
+      getDocs(col(window.__db,'read_records')),
+    ]);
+    us.forEach(d=>{if(!S.users.find(u=>u.id===d.id))S.users.push({id:d.id,...d.data()});});
+    bs.forEach(d=>{if(!S.books.find(b=>b.id===d.id))S.books.push({id:d.id,...d.data()});});
+    rs.forEach(d=>{const data=d.data();const key=r=>r.userId+'_'+r.bookId;if(!S.records.find(r=>key(r)===key(data)))S.records.push(data);});
+    saveMain();
+    renderDashboard(); renderUsers(); renderGroupStats();
+    toast('동기화 완료 ✓');
+  }catch(e){toast('동기화 실패: '+e.message);}
+}
+async function fsSet(coll,id,data){const{doc,setDoc}=window.__fs;await setDoc(doc(window.__db,coll,id),data);}
+async function fsDel(coll,id){const{doc,deleteDoc}=window.__fs;await deleteDoc(doc(window.__db,coll,id));}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+</script>
+</body>
+</html>
